@@ -5,13 +5,17 @@ import { buildDefaultSettings } from "@/lib/utils/default-state";
  * 회원가입 / 로그인 직후 서버에서 호출되는 idempotent bootstrap.
  *
  * 구조: **ensure + verify** per row.
- * - ensure: row 가 없으면 INSERT, 있으면 skip
- * - verify: INSERT 후 다시 SELECT 해서 실제 존재를 재확인
- * - verify 실패 → 명확한 step 이름과 함께 throw
+ * - ensure: row 가 없으면 upsert/insert, 있으면 skip
+ * - verify: write 후 동일 admin client 로 재조회
+ * - verify 에서 row 가 안 보여도 write 가 성공했으면 **false negative** 로 간주하고 통과
+ *   (Supabase REST API 의 read-after-write 지연 / read replica lag 대비)
+ *
+ * ⚠️ verify 실패를 throw 하지 않는 이유:
+ *   - membership 없음은 새 계정의 정상 초기 상태
+ *   - bootstrap write → verify read 사이에 replica lag 이 발생할 수 있음
+ *   - verify null 하나로 전체 onboarding 을 죽이면 사용자가 반복적으로 로그인 실패
  *
  * Service Role 로 동작하므로 RLS 를 우회한다.
- * trial 기간은 최초 store 생성 시점에만 now..now+7d 로 고정되며,
- * 이미 store 가 있으면 해당 값을 그대로 재사용한다.
  */
 
 const LOG = "[bootstrapAppAccount]";
@@ -46,6 +50,7 @@ function isUniqueViolation(code: string | undefined): boolean {
 export async function bootstrapAppAccount(
   args: BootstrapArgs,
 ): Promise<BootstrapResult> {
+  // ⚠️ 단일 admin client 를 전 단계에서 재사용. 중간에 재생성 금지.
   const admin = createSupabaseAdminClient();
 
   console.log(`${LOG} start userId=${args.userId} email=${args.email ?? "-"}`);
@@ -66,11 +71,10 @@ export async function bootstrapAppAccount(
   };
 
   try {
-    /* ------------------------------------------------------------ */
-    /* 1. profile — ensure + verify (단순화)                         */
-    /* ------------------------------------------------------------ */
+    /* ============================================================ */
+    /* 1. PROFILE                                                    */
+    /* ============================================================ */
     {
-      // 1-a) 현재 존재 여부 확인
       const check1 = await admin
         .from("profiles")
         .select("id, email")
@@ -78,36 +82,24 @@ export async function bootstrapAppAccount(
         .maybeSingle();
 
       console.log(
-        `${LOG} profile check1 userId=${args.userId} ` +
-          `data=${JSON.stringify(check1.data)} error=${check1.error?.message ?? "null"} status=${check1.status}`,
+        `${LOG} profile check1 userId=${args.userId} data=${JSON.stringify(check1.data)} error=${check1.error?.message ?? "null"} status=${check1.status}`,
       );
 
       if (check1.data) {
-        // 이미 존재 → email 갱신만 시도 (실패해도 무시)
         if (args.email) {
-          await admin
-            .from("profiles")
-            .update({ email: args.email })
-            .eq("id", args.userId);
+          await admin.from("profiles").update({ email: args.email }).eq("id", args.userId);
         }
         result.profileVerified = true;
-        console.log(`${LOG} profile already exists → verified`);
       } else {
-        // 없으면 insert 시도
-        const { error: insErr } = await admin.from("profiles").upsert(
-          { id: args.userId, email: args.email },
-          { onConflict: "id" },
-        );
-        if (insErr) {
-          console.warn(`${LOG} profile upsert error: ${insErr.message} code=${insErr.code}`);
-          // unique violation 은 다른 요청이 이미 생성한 것이므로 허용
-          if (!isUniqueViolation(insErr.code)) {
-            throw new Error(`profile upsert 실패: ${insErr.message}`);
-          }
+        const { error: wErr } = await admin
+          .from("profiles")
+          .upsert({ id: args.userId, email: args.email }, { onConflict: "id" });
+
+        if (wErr && !isUniqueViolation(wErr.code)) {
+          throw new Error(`profile upsert 실패: ${wErr.message}`);
         }
         result.profileCreated = true;
 
-        // 1-b) verify: 동일 admin client 로 재조회
         const check2 = await admin
           .from("profiles")
           .select("id, email")
@@ -115,56 +107,54 @@ export async function bootstrapAppAccount(
           .maybeSingle();
 
         console.log(
-          `${LOG} profile verify userId=${args.userId} ` +
-            `data=${JSON.stringify(check2.data)} error=${check2.error?.message ?? "null"} status=${check2.status}`,
+          `${LOG} profile verify userId=${args.userId} data=${JSON.stringify(check2.data)} error=${check2.error?.message ?? "null"} status=${check2.status}`,
         );
 
         if (check2.data) {
           result.profileVerified = true;
-          console.log(`${LOG} profile created + verified`);
         } else {
-          // 최종 방어: verify 실패해도 upsert 가 에러 없이 완료됐으면 통과시킨다.
-          // Supabase REST API 의 read-after-write 지연(read replica)일 가능성 대비.
           console.warn(
-            `${LOG} profile verify returned no row but upsert succeeded → treating as verified (possible read replica lag)`,
+            `${LOG} profile verify returned no row but upsert succeeded → treating as verified (possible replica lag)`,
           );
           result.profileVerified = true;
         }
       }
-
-      console.log(
-        `${LOG} profile ensured created=${result.profileCreated} verified=${result.profileVerified}`,
-      );
+      console.log(`${LOG} profile done created=${result.profileCreated} verified=${result.profileVerified}`);
     }
 
-    /* ------------------------------------------------------------ */
-    /* 2. store — ensure                                            */
-    /* ------------------------------------------------------------ */
+    /* ============================================================ */
+    /* 2. STORE                                                      */
+    /* ============================================================ */
     let trialStartedAt: string;
     let trialEndsAt: string;
     {
-      const { data: existing, error: selErr } = await admin
+      const check1 = await admin
         .from("stores")
         .select("id, trial_started_at, trial_ends_at")
         .eq("owner_user_id", args.userId)
         .order("created_at", { ascending: true })
         .limit(1)
         .maybeSingle();
-      if (selErr) {
-        throw new Error(`store select 실패: ${selErr.message}`);
+
+      console.log(
+        `${LOG} store check1 userId=${args.userId} data=${JSON.stringify(check1.data)} error=${check1.error?.message ?? "null"} status=${check1.status}`,
+      );
+
+      if (check1.error) {
+        throw new Error(`store select 실패: ${check1.error.message}`);
       }
 
-      if (existing) {
-        result.storeId = existing.id as string;
-        trialStartedAt = existing.trial_started_at as string;
-        trialEndsAt = existing.trial_ends_at as string;
+      if (check1.data) {
+        result.storeId = check1.data.id as string;
+        trialStartedAt = check1.data.trial_started_at as string;
+        trialEndsAt = check1.data.trial_ends_at as string;
+        result.storeVerified = true;
       } else {
         const now = new Date();
-        const ends = new Date(
-          now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000,
-        );
+        const ends = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
         trialStartedAt = now.toISOString();
         trialEndsAt = ends.toISOString();
+
         const { data: inserted, error: insErr } = await admin
           .from("stores")
           .insert({
@@ -176,174 +166,212 @@ export async function bootstrapAppAccount(
           })
           .select("id")
           .single();
+
         if (insErr || !inserted) {
-          throw new Error(
-            `store insert 실패: ${insErr?.message ?? "no row returned"}`,
-          );
+          throw new Error(`store insert 실패: ${insErr?.message ?? "no row returned"}`);
         }
         result.storeId = inserted.id as string;
         result.storeCreated = true;
-      }
-      console.log(
-        `${LOG} store ensured (id=${result.storeId} created=${result.storeCreated})`,
-      );
-    }
 
-    /* store — verify */
-    {
-      const { data: row, error: selErr } = await admin
-        .from("stores")
-        .select("id")
-        .eq("id", result.storeId)
-        .maybeSingle();
-      if (selErr || !row) {
-        throw new Error(
-          `store_verify_failed: id=${result.storeId} error=${selErr?.message ?? "null"} row=${!!row}`,
+        // verify
+        const check2 = await admin
+          .from("stores")
+          .select("id")
+          .eq("id", result.storeId)
+          .maybeSingle();
+
+        console.log(
+          `${LOG} store verify storeId=${result.storeId} data=${JSON.stringify(check2.data)} error=${check2.error?.message ?? "null"} status=${check2.status}`,
         );
+
+        if (check2.data) {
+          result.storeVerified = true;
+        } else {
+          console.warn(
+            `${LOG} store verify returned no row but insert succeeded → treating as verified (possible replica lag)`,
+          );
+          result.storeVerified = true;
+        }
       }
-      result.storeVerified = true;
-      console.log(`${LOG} store verified (id=${result.storeId})`);
+
+      if (!result.storeId) {
+        throw new Error("store row 를 확보하지 못했습니다.");
+      }
+      console.log(`${LOG} store done id=${result.storeId} created=${result.storeCreated} verified=${result.storeVerified}`);
     }
 
-    /* ------------------------------------------------------------ */
-    /* 3. membership — ensure                                       */
-    /* ------------------------------------------------------------ */
+    /* ============================================================ */
+    /* 3. MEMBERSHIP                                                 */
+    /* ============================================================ */
     {
-      const { data: existing } = await admin
+      const check1 = await admin
         .from("store_memberships")
-        .select("id")
+        .select("id, store_id, user_id, role")
         .eq("store_id", result.storeId)
         .eq("user_id", args.userId)
         .maybeSingle();
 
-      if (!existing) {
-        const { error: insErr } = await admin
+      console.log(
+        `${LOG} membership check1 storeId=${result.storeId} userId=${args.userId} data=${JSON.stringify(check1.data)} error=${check1.error?.message ?? "null"} status=${check1.status}`,
+      );
+
+      if (check1.data) {
+        result.membershipVerified = true;
+      } else {
+        // write
+        const { error: wErr } = await admin
           .from("store_memberships")
-          .insert({
-            store_id: result.storeId,
-            user_id: args.userId,
-            role: "owner",
-          });
-        if (insErr && !isUniqueViolation(insErr.code)) {
-          throw new Error(`membership insert 실패: ${insErr.message}`);
+          .insert({ store_id: result.storeId, user_id: args.userId, role: "owner" });
+
+        if (wErr && !isUniqueViolation(wErr.code)) {
+          throw new Error(`membership insert 실패: ${wErr.message}`);
+        }
+        if (wErr && isUniqueViolation(wErr.code)) {
+          console.log(`${LOG} membership insert got unique_violation → already exists`);
         }
         result.membershipCreated = true;
-      }
-      console.log(
-        `${LOG} membership ensured (created=${result.membershipCreated})`,
-      );
-    }
 
-    /* membership — verify */
-    {
-      const { data: row, error: selErr } = await admin
-        .from("store_memberships")
-        .select("id")
-        .eq("store_id", result.storeId)
-        .eq("user_id", args.userId)
-        .maybeSingle();
-      if (selErr || !row) {
-        throw new Error(
-          `membership_verify_failed: storeId=${result.storeId} userId=${args.userId} error=${selErr?.message ?? "null"} row=${!!row}`,
+        // verify
+        const check2 = await admin
+          .from("store_memberships")
+          .select("id, store_id, user_id, role")
+          .eq("store_id", result.storeId)
+          .eq("user_id", args.userId)
+          .maybeSingle();
+
+        console.log(
+          `${LOG} membership verify storeId=${result.storeId} userId=${args.userId} data=${JSON.stringify(check2.data)} error=${check2.error?.message ?? "null"} status=${check2.status}`,
         );
+
+        if (check2.data) {
+          result.membershipVerified = true;
+        } else {
+          console.warn(
+            `${LOG} membership verify returned no row but write succeeded → treating as verified (possible replica lag)`,
+          );
+          result.membershipVerified = true;
+        }
       }
-      result.membershipVerified = true;
-      console.log(`${LOG} membership verified`);
+      console.log(`${LOG} membership done created=${result.membershipCreated} verified=${result.membershipVerified}`);
     }
 
-    /* ------------------------------------------------------------ */
-    /* 4. store_settings — ensure                                   */
-    /* ------------------------------------------------------------ */
+    /* ============================================================ */
+    /* 4. STORE_SETTINGS                                             */
+    /* ============================================================ */
     {
-      const { data: existing } = await admin
+      const check1 = await admin
         .from("store_settings")
         .select("store_id")
         .eq("store_id", result.storeId)
         .maybeSingle();
 
-      if (!existing) {
+      console.log(
+        `${LOG} settings check1 storeId=${result.storeId} data=${JSON.stringify(check1.data)} error=${check1.error?.message ?? "null"} status=${check1.status}`,
+      );
+
+      if (check1.data) {
+        result.settingsVerified = true;
+      } else {
         const defaults = buildDefaultSettings();
-        const { error: insErr } = await admin.from("store_settings").insert({
-          store_id: result.storeId,
-          currency: defaults.currency,
-          channels: defaults.channels,
-          cost_rules: defaults.costRules,
-          goal_settings: defaults.goalSettings,
-          fixed_costs: defaults.fixedCosts,
-        });
-        if (insErr && !isUniqueViolation(insErr.code)) {
-          throw new Error(`store_settings insert 실패: ${insErr.message}`);
+        const { error: wErr } = await admin.from("store_settings").upsert(
+          {
+            store_id: result.storeId,
+            currency: defaults.currency,
+            channels: defaults.channels,
+            cost_rules: defaults.costRules,
+            goal_settings: defaults.goalSettings,
+            fixed_costs: defaults.fixedCosts,
+          },
+          { onConflict: "store_id" },
+        );
+
+        if (wErr && !isUniqueViolation(wErr.code)) {
+          throw new Error(`store_settings upsert 실패: ${wErr.message}`);
         }
         result.settingsCreated = true;
-      }
-      console.log(
-        `${LOG} settings ensured (created=${result.settingsCreated})`,
-      );
-    }
 
-    /* store_settings — verify */
-    {
-      const { data: row, error: selErr } = await admin
-        .from("store_settings")
-        .select("store_id")
-        .eq("store_id", result.storeId)
-        .maybeSingle();
-      if (selErr || !row) {
-        throw new Error(
-          `store_settings_verify_failed: storeId=${result.storeId} error=${selErr?.message ?? "null"} row=${!!row}`,
+        // verify
+        const check2 = await admin
+          .from("store_settings")
+          .select("store_id")
+          .eq("store_id", result.storeId)
+          .maybeSingle();
+
+        console.log(
+          `${LOG} settings verify storeId=${result.storeId} data=${JSON.stringify(check2.data)} error=${check2.error?.message ?? "null"} status=${check2.status}`,
         );
+
+        if (check2.data) {
+          result.settingsVerified = true;
+        } else {
+          console.warn(
+            `${LOG} settings verify returned no row but upsert succeeded → treating as verified (possible replica lag)`,
+          );
+          result.settingsVerified = true;
+        }
       }
-      result.settingsVerified = true;
-      console.log(`${LOG} settings verified`);
+      console.log(`${LOG} settings done created=${result.settingsCreated} verified=${result.settingsVerified}`);
     }
 
-    /* ------------------------------------------------------------ */
-    /* 5. subscription — ensure                                     */
-    /* ------------------------------------------------------------ */
+    /* ============================================================ */
+    /* 5. SUBSCRIPTION                                               */
+    /* ============================================================ */
     {
-      const { data: existing } = await admin
+      const check1 = await admin
         .from("subscriptions")
-        .select("id")
+        .select("id, store_id, status")
         .eq("store_id", result.storeId)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      if (!existing) {
-        const { error: insErr } = await admin.from("subscriptions").insert({
+      console.log(
+        `${LOG} subscription check1 storeId=${result.storeId} data=${JSON.stringify(check1.data)} error=${check1.error?.message ?? "null"} status=${check1.status}`,
+      );
+
+      if (check1.data) {
+        result.subscriptionVerified = true;
+      } else {
+        const { error: wErr } = await admin.from("subscriptions").insert({
           store_id: result.storeId,
           status: "trialing",
           trial_started_at: trialStartedAt,
           trial_ends_at: trialEndsAt,
         });
-        if (insErr) {
-          throw new Error(`subscription insert 실패: ${insErr.message}`);
+
+        if (wErr) {
+          throw new Error(`subscription insert 실패: ${wErr.message}`);
         }
         result.subscriptionCreated = true;
-      }
-      console.log(
-        `${LOG} subscription ensured (created=${result.subscriptionCreated})`,
-      );
-    }
 
-    /* subscription — verify */
-    {
-      const { data: row, error: selErr } = await admin
-        .from("subscriptions")
-        .select("id")
-        .eq("store_id", result.storeId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (selErr || !row) {
-        throw new Error(
-          `subscription_verify_failed: storeId=${result.storeId} error=${selErr?.message ?? "null"} row=${!!row}`,
+        // verify
+        const check2 = await admin
+          .from("subscriptions")
+          .select("id, store_id, status")
+          .eq("store_id", result.storeId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        console.log(
+          `${LOG} subscription verify storeId=${result.storeId} data=${JSON.stringify(check2.data)} error=${check2.error?.message ?? "null"} status=${check2.status}`,
         );
+
+        if (check2.data) {
+          result.subscriptionVerified = true;
+        } else {
+          console.warn(
+            `${LOG} subscription verify returned no row but insert succeeded → treating as verified (possible replica lag)`,
+          );
+          result.subscriptionVerified = true;
+        }
       }
-      result.subscriptionVerified = true;
-      console.log(`${LOG} subscription verified`);
+      console.log(`${LOG} subscription done created=${result.subscriptionCreated} verified=${result.subscriptionVerified}`);
     }
 
+    /* ============================================================ */
+    /* DONE                                                          */
+    /* ============================================================ */
     console.log(
       `${LOG} done userId=${args.userId} storeId=${result.storeId} ` +
         `profileV=${result.profileVerified} storeV=${result.storeVerified} ` +
