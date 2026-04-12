@@ -4,6 +4,7 @@ import { SectionCard } from "@/components/common/section-card";
 import { requireStoreContext } from "@/lib/auth/guards";
 import { getTrialDaysRemaining } from "@/lib/auth/access";
 import { BillingCTA } from "@/components/billing/billing-cta";
+import { ManageBillingButton } from "@/components/billing/manage-billing-button";
 
 export const metadata = {
   title: "결제 / 구독 | 장사 계산기",
@@ -116,11 +117,19 @@ export default async function BillingPage() {
           {needsPayment ? (
             <BillingCTA accessStatus={accessStatus} trialDays={trialDays} />
           ) : (
-            <div className="flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-700">
-              <CheckCircle2 aria-hidden="true" className="h-4 w-4" />
-              <span className="font-semibold">현재 구독은 활성 상태입니다.</span>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-700">
+                <CheckCircle2 aria-hidden="true" className="h-4 w-4" />
+                <span className="font-semibold">현재 구독은 활성 상태입니다.</span>
+              </div>
+              <ManageBillingButton />
             </div>
           )}
+
+          {/* past_due / cancelled 에서도 portal 접근 허용 */}
+          {(accessStatus === "past_due" || accessStatus === "cancelled") ? (
+            <ManageBillingButton />
+          ) : null}
         </div>
       </SectionCard>
 
