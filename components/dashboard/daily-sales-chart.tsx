@@ -56,7 +56,7 @@ export function DailySalesChart({ entries, month }: DailySalesChartProps) {
 
   /* ── SVG 치수 — 높이를 키워 하단 허전함 해소 ── */
   const W = 620;
-  const H = 168;
+  const H = 152;
   const PAD = { top: 18, right: 16, bottom: 26, left: 16 };
   const cW = W - PAD.left - PAD.right;
   const cH = H - PAD.top - PAD.bottom;
@@ -104,9 +104,9 @@ export function DailySalesChart({ entries, month }: DailySalesChartProps) {
       >
         <defs>
           <linearGradient id="areaGradFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.18" />
-            <stop offset="85%" stopColor="hsl(var(--primary))" stopOpacity="0.03" />
-            <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
+            <stop offset="0%" stopColor="#378ADD" stopOpacity="0.18" />
+            <stop offset="85%" stopColor="#378ADD" stopOpacity="0.03" />
+            <stop offset="100%" stopColor="#378ADD" stopOpacity="0" />
           </linearGradient>
           <clipPath id="chartClip">
             <rect x={PAD.left} y={PAD.top} width={cW} height={cH + 1} />
@@ -177,7 +177,7 @@ export function DailySalesChart({ entries, month }: DailySalesChartProps) {
         <polyline
           points={linePoints}
           fill="none"
-          stroke="hsl(var(--primary))"
+          stroke="#378ADD"
           strokeWidth="2.2"
           strokeLinejoin="round"
           strokeLinecap="round"
@@ -199,7 +199,7 @@ export function DailySalesChart({ entries, month }: DailySalesChartProps) {
                 cy={cy}
                 r="4.5"
                 fill="hsl(var(--card))"
-                stroke="hsl(var(--primary))"
+                stroke="#378ADD"
                 strokeWidth="2"
                 className="pointer-events-none"
               />
@@ -208,7 +208,7 @@ export function DailySalesChart({ entries, month }: DailySalesChartProps) {
                 cx={cx}
                 cy={cy}
                 r="2"
-                fill="hsl(var(--primary))"
+                fill="#378ADD"
                 className="pointer-events-none"
               />
             </g>

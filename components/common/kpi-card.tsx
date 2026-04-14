@@ -39,8 +39,7 @@ export function KpiCard({
   return (
     <div
       className={cn(
-        "rounded-xl border border-border bg-card px-5 py-4",
-        "shadow-[0_1px_3px_0_rgba(0,0,0,0.04),0_1px_2px_-1px_rgba(0,0,0,0.04)]",
+        "rounded-lg border border-border bg-card px-4 py-3.5",
         className,
       )}
     >
@@ -56,7 +55,7 @@ export function KpiCard({
       </div>
       <p
         className={cn(
-          "mt-2.5 text-2xl font-bold tracking-tight tabular-nums",
+          "mt-2 text-xl font-semibold tracking-tight tabular-nums",
           ACCENT_VALUE_CLASS[accent],
         )}
       >

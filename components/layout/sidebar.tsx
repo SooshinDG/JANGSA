@@ -31,9 +31,9 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden md:flex md:w-[220px] md:shrink-0 md:flex-col md:border-r md:border-border md:bg-white">
+    <aside className="hidden md:flex md:w-[220px] md:shrink-0 md:flex-col md:border-r md:border-border md:bg-card">
       {/* 로고 */}
-      <div className="flex h-14 items-center border-b border-border px-5">
+      <div className="flex h-12 items-center border-b border-border px-5">
         <Link href="/app/dashboard" className="flex items-center gap-2.5 group">
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-[11px] font-bold text-primary-foreground select-none shadow-sm group-hover:shadow-md transition-shadow">
             장
@@ -58,7 +58,7 @@ export function Sidebar() {
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                 active
-                  ? "bg-primary/[0.08] text-primary font-semibold"
+                  ? "bg-primary/[0.07] text-primary font-medium"
                   : "font-medium text-muted-foreground hover:bg-secondary hover:text-foreground",
               )}
             >

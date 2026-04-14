@@ -26,13 +26,12 @@ export function SectionCard({
   return (
     <section
       className={cn(
-        "rounded-xl border border-border bg-card text-card-foreground",
-        "shadow-[0_1px_3px_0_rgba(0,0,0,0.04),0_1px_2px_-1px_rgba(0,0,0,0.04)]",
+        "rounded-lg border border-border bg-card text-card-foreground",
         className,
       )}
     >
       {hasHeader ? (
-        <header className="flex flex-col gap-1.5 border-b border-border px-5 py-3.5 md:flex-row md:items-center md:justify-between">
+        <header className="flex flex-col gap-1.5 border-b border-border px-4 py-3 md:flex-row md:items-center md:justify-between">
           <div>
             {title ? (
               <h3 className="text-sm font-semibold text-foreground">{title}</h3>
@@ -46,7 +45,7 @@ export function SectionCard({
           ) : null}
         </header>
       ) : null}
-      <div className={cn(noPadding ? "" : "px-5 py-4")}>{children}</div>
+      <div className={cn(noPadding ? "" : "px-4 py-3.5")}>{children}</div>
       {footer ? (
         <footer className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
           {footer}

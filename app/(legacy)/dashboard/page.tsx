@@ -11,7 +11,6 @@ import {
   Minus,
   AlertCircle,
   CheckCircle2,
-  Info,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/page-header";
 import { SectionCard } from "@/components/common/section-card";
@@ -37,20 +36,6 @@ const CHANNEL_COLORS: Record<string, string> = {
   coupang: "#1D9E75",   // Teal 400
   pos:     "#7F77DD",   // Purple 400
 };
-
-/* ------------------------------------------------------------------ */
-/* BEP 달성 박스 색상 — 기준표 고정값                                    */
-/* ------------------------------------------------------------------ */
-const BEP_ABOVE_BG       = "#EAF3DE";   // Green 50
-const BEP_ABOVE_BORDER   = "#B8DDA0";   // Green 200
-const BEP_ABOVE_TITLE    = "#27500A";   // Green 800
-const BEP_ABOVE_AMOUNT   = "#3B6D11";   // Green 600
-
-/* ------------------------------------------------------------------ */
-/* 인사이트 긍정 색상 — 기준표 고정값                                    */
-/* ------------------------------------------------------------------ */
-const INSIGHT_POS_DOT  = "#639922";   // Green 400 (bullet)
-const INSIGHT_POS_TEXT = "#27500A";   // Green 800 (문장)
 
 /* ------------------------------------------------------------------ */
 /* 헬퍼                                                                  */
@@ -307,7 +292,7 @@ export default function DashboardPage() {
       });
     }
 
-    return list.slice(0, 6);
+    return list.slice(0, 4);
   }, [hasData, monthly, prediction, bepAbove]);
 
   /* ── 차트 카드 하단 통계 ── */
@@ -342,7 +327,6 @@ export default function DashboardPage() {
             ) : loading ? "로드 중..." : "데이터 없음"
           }
           icon={<Wallet />}
-          className="border-t-[3px] border-t-primary"
         />
         <KpiCard
           label="예상 순이익"
@@ -355,19 +339,12 @@ export default function DashboardPage() {
           }
           accent={profitAccent}
           icon={monthly.finalNetProfit >= 0 ? <TrendingUp /> : <TrendingDown />}
-          className={cn(
-            "border-t-[3px]",
-            !hasData ? "border-t-border"
-            : monthly.finalNetProfit >= 0 ? "border-t-emerald-500"
-            : "border-t-destructive",
-          )}
         />
         <KpiCard
           label="이번 달 수수료"
           value={formatKrwCompact(monthly.totalChannelFee)}
           hint={<span className="font-mono">{formatKRW(monthly.totalChannelFee)}</span>}
           icon={<Receipt />}
-          className="border-t-[3px] border-t-amber-400"
         />
         <KpiCard
           label="목표 달성률"
@@ -382,12 +359,6 @@ export default function DashboardPage() {
           }
           accent={targetAccent}
           icon={<Target />}
-          className={cn(
-            "border-t-[3px]",
-            !hasData ? "border-t-border"
-            : monthly.targetAchievementRate >= 100 ? "border-t-emerald-500"
-            : "border-t-primary",
-          )}
           footer={
             <div
               className="h-1.5 w-full overflow-hidden rounded-full bg-secondary"
@@ -516,37 +487,25 @@ export default function DashboardPage() {
                 <div
                   className={cn(
                     "flex items-start gap-2.5 rounded-lg border px-3.5 py-3 text-sm",
-                    !bepAbove && "border-amber-200 bg-amber-50",
-                  )}
-                  style={
                     bepAbove
-                      ? { backgroundColor: BEP_ABOVE_BG, borderColor: BEP_ABOVE_BORDER }
-                      : undefined
-                  }
+                      ? "border-green-200 bg-green-50"
+                      : "border-amber-100 bg-amber-50/60",
+                  )}
                 >
                   {bepAbove ? (
-                    <CheckCircle2
-                      className="mt-0.5 h-4 w-4 shrink-0"
-                      style={{ color: BEP_ABOVE_AMOUNT }}
-                    />
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
                   ) : (
                     <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
                   )}
                   <div>
-                    <p
-                      className="font-semibold"
-                      style={bepAbove ? { color: BEP_ABOVE_TITLE } : undefined}
-                    >
-                      <span className={!bepAbove ? "text-amber-700" : ""}>
-                        {bepAbove ? "손익분기점 달성" : "손익분기점 미달"}
-                      </span>
+                    <p className={cn("font-semibold", bepAbove ? "text-green-800" : "text-amber-700")}>
+                      {bepAbove ? "손익분기점 달성" : "손익분기점 미달"}
                     </p>
                     <p
                       className={cn(
                         "text-xl font-bold tabular-nums mt-0.5",
-                        !bepAbove && "text-amber-600",
+                        bepAbove ? "text-green-700" : "text-amber-600",
                       )}
-                      style={bepAbove ? { color: BEP_ABOVE_AMOUNT } : undefined}
                     >
                       {bepGap >= 0 ? "+" : ""}
                       {formatKrwCompact(bepGap)}
@@ -616,19 +575,18 @@ export default function DashboardPage() {
                   key={i}
                   className={cn(
                     "flex items-start gap-2.5 text-sm leading-snug",
+                    ins.tone === "positive" && "text-green-800",
                     ins.tone === "caution" && "text-amber-700",
                     ins.tone === "neutral" && "text-foreground",
                   )}
-                  style={ins.tone === "positive" ? { color: INSIGHT_POS_TEXT } : undefined}
                 >
                   <span
-                    className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full"
-                    style={{
-                      backgroundColor:
-                        ins.tone === "positive" ? INSIGHT_POS_DOT
-                        : ins.tone === "caution" ? "#d97706"   // amber-600
-                        : "hsl(var(--muted-foreground))",
-                    }}
+                    className={cn(
+                      "mt-2 h-1.5 w-1.5 shrink-0 rounded-full",
+                      ins.tone === "positive" && "bg-green-500",
+                      ins.tone === "caution" && "bg-amber-500",
+                      ins.tone === "neutral" && "bg-muted-foreground/50",
+                    )}
                     aria-hidden="true"
                   />
                   <span>{ins.text}</span>
@@ -649,32 +607,29 @@ export default function DashboardPage() {
         {/* 운영 알림 — 5~6개로 확장 */}
         <SectionCard title="운영 알림" description="채널·수수료·수익 점검">
           {alerts.length > 0 ? (
-            <ul className="space-y-1.5">
+            <ul className="space-y-2.5">
               {alerts.map((alert, i) => (
                 <li
                   key={i}
-                  className={cn(
-                    "flex items-start gap-2 rounded-lg border px-3 py-2 text-xs leading-snug",
-                    alert.type === "info" &&
-                      "border-blue-100 bg-blue-50 text-blue-800",
-                    alert.type === "warning" &&
-                      "border-amber-200 bg-amber-50 text-amber-800",
-                    alert.type === "caution" &&
-                      "border-red-100 bg-red-50 text-red-800",
-                  )}
+                  className="flex items-start gap-2.5 text-xs leading-snug text-muted-foreground"
                 >
-                  {alert.type === "info" && (
-                    <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-500" />
-                  )}
-                  {(alert.type === "warning" || alert.type === "caution") && (
-                    <AlertCircle
-                      className={cn(
-                        "mt-0.5 h-3.5 w-3.5 shrink-0",
-                        alert.type === "warning" ? "text-amber-500" : "text-red-500",
-                      )}
-                    />
-                  )}
-                  <span className="font-medium">{alert.text}</span>
+                  <span
+                    className={cn(
+                      "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full",
+                      alert.type === "warning" && "bg-amber-400",
+                      alert.type === "caution" && "bg-red-400",
+                      alert.type === "info" && "bg-muted-foreground/40",
+                    )}
+                    aria-hidden="true"
+                  />
+                  <span
+                    className={cn(
+                      alert.type === "warning" && "text-amber-700",
+                      alert.type === "caution" && "text-red-700",
+                    )}
+                  >
+                    {alert.text}
+                  </span>
                 </li>
               ))}
             </ul>

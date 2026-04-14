@@ -104,8 +104,8 @@ export function DonutChart({
             y={cy - (centerSubLabel ? 6 : 0)}
             textAnchor="middle"
             dominantBaseline="middle"
-            fontSize="13"
-            fontWeight="700"
+            fontSize="12"
+            fontWeight="600"
             fill="hsl(var(--foreground))"
           >
             {centerLabel}
