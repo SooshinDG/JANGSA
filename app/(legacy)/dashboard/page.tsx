@@ -9,6 +9,9 @@ import {
   Wallet,
   Receipt,
   Minus,
+  AlertCircle,
+  CheckCircle2,
+  Info,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/page-header";
 import { SectionCard } from "@/components/common/section-card";
@@ -16,12 +19,23 @@ import { MonthPicker } from "@/components/common/month-picker";
 import { KpiCard } from "@/components/common/kpi-card";
 import { EmptyState } from "@/components/common/empty-state";
 import { DailySalesChart } from "@/components/dashboard/daily-sales-chart";
+import { DonutChart, type DonutSegment } from "@/components/dashboard/donut-chart";
 import { CHANNELS } from "@/lib/constants/channels";
 import { useAppState } from "@/hooks/useAppState";
 import { useComputedMetrics } from "@/hooks/useComputedMetrics";
 import { formatKRW, formatPercent } from "@/lib/utils/currency";
 import { formatKrwCompact } from "@/lib/utils/format-krw-compact";
 import { cn } from "@/lib/utils/cn";
+
+/* ------------------------------------------------------------------ */
+/* 채널 색상                                                             */
+/* ------------------------------------------------------------------ */
+const CHANNEL_COLORS: Record<string, string> = {
+  baemin: "#2ac1bc",
+  yogiyo: "#fa0050",
+  coupang: "#1f8ce6",
+  pos: "#94a3b8",
+};
 
 /* ------------------------------------------------------------------ */
 /* 헬퍼                                                                  */
@@ -50,12 +64,17 @@ function formatSignedPercent(value: number): string {
 }
 
 /* ------------------------------------------------------------------ */
-/* 인사이트 타입                                                         */
+/* 인사이트 / 알림 타입                                                  */
 /* ------------------------------------------------------------------ */
 
 interface Insight {
   text: string;
   tone: "positive" | "caution" | "neutral";
+}
+
+interface Alert {
+  type: "info" | "warning" | "caution";
+  text: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -75,41 +94,52 @@ export default function DashboardPage() {
   const hasData = monthly.totalDaysWithData > 0;
   const mom = monthly.monthOverMonthGrowthRate;
 
-  /* KPI accent */
-  const profitAccent = loading
-    ? "default"
-    : monthly.finalNetProfit >= 0
-      ? "positive"
-      : "negative";
-  const targetAccent = loading
-    ? "default"
-    : monthly.targetAchievementRate >= 100
-      ? "positive"
-      : "primary";
+  /* ── KPI 강조 ── */
+  const profitAccent =
+    !hasData || loading
+      ? "default"
+      : monthly.finalNetProfit >= 0
+        ? "positive"
+        : "negative";
+  const targetAccent =
+    !hasData || loading
+      ? "default"
+      : monthly.targetAchievementRate >= 100
+        ? "positive"
+        : "primary";
 
-  /* 목표 달성률 진행 바 */
+  /* ── 목표 달성률 진행 바 ── */
   const goalPct = Math.min(100, Math.max(0, monthly.targetAchievementRate));
-  const goalBarColor =
-    monthly.targetAchievementRate >= 100 ? "bg-emerald-500" : "bg-primary";
 
-  /* ── 운영 인사이트 계산 ── */
+  /* ── 도넛 차트 세그먼트 ── */
+  const donutSegments: DonutSegment[] = useMemo(
+    () =>
+      CHANNELS.map((ch) => ({
+        id: ch.id,
+        label: ch.label,
+        value: monthly.channelSales[ch.id] ?? 0,
+        color: CHANNEL_COLORS[ch.id] ?? "#94a3b8",
+      })),
+    [monthly.channelSales],
+  );
+
+  /* ── 이달 인사이트 ── */
   const insights = useMemo((): Insight[] => {
     if (!hasData) return [];
-
     const list: Insight[] = [];
 
-    // 1. 전월 대비 추세
+    // 전월 대비
     if (mom !== 0) {
       list.push({
         text:
           mom > 0
-            ? `전월 대비 ${mom.toFixed(1)}% 더 팔았습니다.`
-            : `전월 대비 ${Math.abs(mom).toFixed(1)}% 감소했습니다.`,
+            ? `전월 매출 대비 ${mom.toFixed(1)}% 더 팔았습니다.`
+            : `전월 매출 대비 ${Math.abs(mom).toFixed(1)}% 감소했습니다.`,
         tone: mom > 0 ? "positive" : "caution",
       });
     }
 
-    // 2. 매출 1위 채널
+    // 1위 채널
     const topCh = CHANNELS.reduce(
       (best, ch) =>
         (monthly.channelSalesShare[ch.id] ?? 0) >
@@ -126,57 +156,131 @@ export default function DashboardPage() {
       });
     }
 
-    // 3. 손익분기점 대비
+    // 손익분기점 대비
     if (monthly.bepSales !== null) {
       const gap = monthly.grossSales - monthly.bepSales;
       list.push(
         gap >= 0
-          ? {
-              text: `손익분기점 대비 ${formatKrwCompact(gap)} 여유가 있습니다.`,
-              tone: "positive",
-            }
-          : {
-              text: `손익분기점까지 ${formatKrwCompact(-gap)} 부족합니다.`,
-              tone: "caution",
-            },
+          ? { text: `손익분기점 대비 ${formatKrwCompact(gap)} 여유가 있습니다.`, tone: "positive" }
+          : { text: `손익분기점까지 ${formatKrwCompact(-gap)} 부족합니다.`, tone: "caution" },
       );
     }
 
-    // 4. 목표 달성 상태
+    // 목표 달성
     if (monthly.targetSales > 0) {
       if (monthly.targetAchievementRate >= 100) {
-        list.push({
-          text: "이번 달 목표 매출을 달성했습니다!",
-          tone: "positive",
-        });
+        list.push({ text: "이번 달 목표 매출을 달성했습니다!", tone: "positive" });
       } else {
         const remaining = monthly.targetSales - monthly.grossSales;
-        if (remaining > 0) {
-          list.push({
-            text: `목표까지 ${formatKrwCompact(remaining)} 남았습니다.`,
-            tone: "neutral",
-          });
-        }
+        if (remaining > 0)
+          list.push({ text: `목표까지 ${formatKrwCompact(remaining)} 남았습니다.`, tone: "neutral" });
       }
     }
 
-    // 5. 평균 일매출
+    // 평균 일매출
     if (monthly.totalDaysWithData > 0) {
       const avg = monthly.grossSales / monthly.totalDaysWithData;
-      list.push({
-        text: `평균 일매출은 ${formatKrwCompact(avg)}입니다.`,
-        tone: "neutral",
-      });
+      list.push({ text: `평균 일매출 ${formatKrwCompact(avg)}입니다.`, tone: "neutral" });
     }
 
     return list.slice(0, 5);
   }, [hasData, monthly, mom]);
 
+  /* ── 운영 알림 ── */
+  const alerts = useMemo((): Alert[] => {
+    if (!hasData) return [];
+    const list: Alert[] = [];
+
+    // 채널 편중
+    const topShare = Math.max(
+      ...CHANNELS.map((c) => (monthly.channelSalesShare[c.id] ?? 0) * 100),
+    );
+    const topChForAlert = CHANNELS.find(
+      (c) => (monthly.channelSalesShare[c.id] ?? 0) * 100 >= topShare - 0.01,
+    );
+    if (topShare > 50 && topChForAlert) {
+      list.push({
+        type: "warning",
+        text: `${topChForAlert.label} 비중 ${topShare.toFixed(0)}% — 채널 분산을 권장합니다.`,
+      });
+    } else if (topChForAlert && topShare > 0) {
+      list.push({
+        type: "info",
+        text: `${topChForAlert.label} 비중 ${topShare.toFixed(0)}% — 채널 구성 안정적입니다.`,
+      });
+    }
+
+    // 수수료율
+    const feeRate =
+      monthly.grossSales > 0
+        ? (monthly.totalChannelFee / monthly.grossSales) * 100
+        : 0;
+    if (feeRate > 0) {
+      const isHigh = feeRate > 9;
+      list.push({
+        type: isHigh ? "warning" : "info",
+        text: `평균 수수료율 ${feeRate.toFixed(1)}% — ${isHigh ? "업종 평균보다 높습니다." : "업종 평균 수준입니다."}`,
+      });
+    }
+
+    // 흑자/적자 상태
+    list.push(
+      monthly.finalNetProfit >= 0
+        ? {
+            type: "info",
+            text: `흑자 운영 중입니다. (순이익 ${formatKrwCompact(monthly.finalNetProfit)})`,
+          }
+        : {
+            type: "caution",
+            text: "현재 고정비 차감 후 적자입니다. 비용 점검을 권장합니다.",
+          },
+    );
+
+    return list;
+  }, [hasData, monthly]);
+
+  /* ── 예측 문구 ── */
+  const prediction = useMemo((): string | null => {
+    if (!hasData || monthly.totalDaysWithData === 0 || monthly.targetSales <= 0)
+      return null;
+
+    const now = new Date();
+    const nowKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    if (month !== nowKey) return null;
+
+    if (monthly.targetAchievementRate >= 100) return null; // 이미 달성
+
+    const dayOfMonth = now.getDate();
+    const daysInMonthTotal = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const remaining = daysInMonthTotal - dayOfMonth;
+    if (remaining <= 0) return null;
+
+    const dailyAvg = monthly.grossSales / monthly.totalDaysWithData;
+    const projected = monthly.grossSales + dailyAvg * remaining;
+
+    if (projected >= monthly.targetSales) {
+      const daysToGoal = Math.max(
+        1,
+        Math.ceil((monthly.targetSales - monthly.grossSales) / dailyAvg),
+      );
+      const goalDate = new Date(now);
+      goalDate.setDate(now.getDate() + daysToGoal);
+      return `현재 속도라면 ${goalDate.getMonth() + 1}월 ${goalDate.getDate()}일경 목표 달성 예상`;
+    }
+    return null;
+  }, [hasData, monthly, month]);
+
+  /* ── BEP 상태 ── */
+  const bepGap =
+    monthly.bepSales !== null ? monthly.grossSales - monthly.bepSales : null;
+  const bepAbove = bepGap !== null && bepGap >= 0;
+
   return (
     <>
+      {/* ── 헤더 ── */}
       <PageHeader
         title="대시보드"
-        description={`${formatKoreanMonth(month)} 기준 주요 지표를 한눈에 확인합니다.`}
+        description={`${formatKoreanMonth(month)} 기준 주요 지표`}
         actions={<MonthPicker value={month} onChange={setMonth} />}
       />
 
@@ -186,62 +290,77 @@ export default function DashboardPage() {
         </div>
       ) : null}
 
-      {/* ── KPI 카드 4개 ── */}
+      {/* ── 행 1: KPI 4개 ── */}
       <section
-        aria-label="KPI 카드"
-        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+        aria-label="핵심 지표"
+        className="grid grid-cols-2 gap-4 lg:grid-cols-4"
       >
+        {/* 총매출 */}
         <KpiCard
           label="이번 달 총매출"
           value={formatKrwCompact(monthly.grossSales)}
           hint={
             hasData ? (
-              <span>
-                <span className="font-mono">{formatKRW(monthly.grossSales)}</span>
-                {" · "}
-                {monthly.totalDaysWithData}일 기록
-              </span>
+              <span className="font-mono">{formatKRW(monthly.grossSales)}</span>
             ) : loading ? (
-              "로컬 저장소 로드 중..."
+              "로드 중..."
             ) : (
-              "입력된 데이터 없음"
+              "데이터 없음"
             )
           }
           icon={<Wallet />}
+          className="border-t-[3px] border-t-primary"
         />
+        {/* 순이익 */}
         <KpiCard
-          label="이번 달 예상 순이익"
+          label="예상 순이익"
           value={formatKrwCompact(monthly.finalNetProfit)}
           hint={
-            loading ? (
-              "데이터 로드 중..."
-            ) : (
-              <span>
-                <span className="font-mono">{formatKRW(monthly.finalNetProfit)}</span>
-                {" · "}
-                {monthly.finalNetProfit >= 0 ? "흑자" : "적자"}
-              </span>
-            )
+            <span>
+              <span className="font-mono">{formatKRW(monthly.finalNetProfit)}</span>
+              {" · "}
+              {monthly.finalNetProfit >= 0 ? "흑자" : "적자"}
+            </span>
           }
           accent={profitAccent}
-          icon={
-            monthly.finalNetProfit >= 0 ? <TrendingUp /> : <TrendingDown />
-          }
+          icon={monthly.finalNetProfit >= 0 ? <TrendingUp /> : <TrendingDown />}
+          className={cn(
+            "border-t-[3px]",
+            !hasData ? "border-t-border" :
+            monthly.finalNetProfit >= 0 ? "border-t-emerald-500" : "border-t-destructive",
+          )}
         />
+        {/* 총수수료 */}
         <KpiCard
-          label="이번 달 총수수료"
+          label="이번 달 수수료"
           value={formatKrwCompact(monthly.totalChannelFee)}
           hint={
             <span className="font-mono">{formatKRW(monthly.totalChannelFee)}</span>
           }
           icon={<Receipt />}
+          className="border-t-[3px] border-t-amber-400"
         />
+        {/* 목표 달성률 */}
         <KpiCard
           label="목표 달성률"
           value={formatPercent(monthly.targetAchievementRate)}
-          hint={`목표 ${formatKrwCompact(monthly.targetSales)}`}
+          hint={
+            <span>
+              목표 {formatKrwCompact(monthly.targetSales)}
+              {prediction ? (
+                <span className="block mt-0.5 text-primary font-medium">
+                  {prediction}
+                </span>
+              ) : null}
+            </span>
+          }
           accent={targetAccent}
           icon={<Target />}
+          className={cn(
+            "border-t-[3px]",
+            !hasData ? "border-t-border" :
+            monthly.targetAchievementRate >= 100 ? "border-t-emerald-500" : "border-t-primary",
+          )}
           footer={
             <div
               className="h-1.5 w-full overflow-hidden rounded-full bg-secondary"
@@ -252,8 +371,8 @@ export default function DashboardPage() {
             >
               <div
                 className={cn(
-                  "h-full rounded-full transition-all duration-500",
-                  goalBarColor,
+                  "h-full rounded-full transition-all duration-700",
+                  monthly.targetAchievementRate >= 100 ? "bg-emerald-500" : "bg-primary",
                 )}
                 style={{ width: `${goalPct}%` }}
               />
@@ -262,155 +381,271 @@ export default function DashboardPage() {
         />
       </section>
 
-      {/* ── 일별 총매출 라인 차트 ── */}
-      {hasData && (
+      {/* ── 행 2: 일별 차트 + 채널 도넛 ── */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        {/* 일별 매출 추이 */}
         <SectionCard
           title="일별 매출 추이"
-          description={`${formatKoreanMonth(month)} · 일별 총매출`}
-        >
-          <DailySalesChart entries={entries} month={month} />
-        </SectionCard>
-      )}
-
-      {/* ── 월 요약 + 채널 비중 ── */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* 왼쪽: 월 요약 (통계 3개 + 인사이트) */}
-        <SectionCard
-          title="월 요약"
-          description="최고 매출일 · 전월 대비 · 손익분기점"
+          description={`${formatKoreanMonth(month)} · 일별 총매출 기준`}
           className="lg:col-span-2"
         >
           {hasData ? (
-            <>
-              {/* 3개 요약 카드 */}
-              <dl className="grid gap-4 sm:grid-cols-3">
-                <SummaryStat
+            <DailySalesChart entries={entries} month={month} />
+          ) : (
+            <EmptyState message="매출을 입력하면 일별 추이를 확인할 수 있습니다." />
+          )}
+        </SectionCard>
+
+        {/* 채널별 매출 비중 */}
+        <SectionCard
+          title="채널별 매출 비중"
+          description="비중 % 기준 · 금액 보조"
+        >
+          {hasData ? (
+            <div className="flex flex-col items-center gap-4">
+              {/* 도넛 차트 */}
+              <DonutChart
+                segments={donutSegments}
+                size={150}
+                thickness={24}
+                centerLabel={formatKrwCompact(monthly.grossSales)}
+                centerSubLabel="총매출"
+              />
+              {/* 채널 리스트 */}
+              <ul className="w-full space-y-2 text-sm">
+                {CHANNELS.map((ch) => {
+                  const share = monthly.channelSalesShare[ch.id] ?? 0;
+                  const sales = monthly.channelSales[ch.id] ?? 0;
+                  const sharePct = share * 100;
+                  const color = CHANNEL_COLORS[ch.id] ?? "#94a3b8";
+                  return (
+                    <li key={ch.id} className="flex items-center gap-2.5">
+                      {/* 색상 점 */}
+                      <span
+                        className="h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: color }}
+                      />
+                      <span className="flex-1 min-w-0 text-xs text-foreground font-medium truncate">
+                        {ch.shortLabel}
+                      </span>
+                      {/* 비중 바 */}
+                      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-secondary shrink-0">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${Math.min(100, sharePct)}%`,
+                            backgroundColor: color,
+                          }}
+                        />
+                      </div>
+                      <span className="text-xs tabular-nums font-semibold text-foreground w-10 text-right shrink-0">
+                        {formatPercent(sharePct)}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+              {/* 금액 보조 */}
+              <ul className="w-full divide-y divide-border text-xs">
+                {CHANNELS.filter((ch) => (monthly.channelSales[ch.id] ?? 0) > 0).map((ch) => (
+                  <li
+                    key={ch.id}
+                    className="flex items-center justify-between py-1.5 text-muted-foreground"
+                  >
+                    <span>{ch.label}</span>
+                    <span className="font-mono tabular-nums">
+                      {formatKRW(monthly.channelSales[ch.id] ?? 0)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <EmptyState message="채널별 매출 데이터가 없습니다." />
+          )}
+        </SectionCard>
+      </div>
+
+      {/* ── 행 3: 손익 현황 + 인사이트 + 알림 ── */}
+      <div className="grid gap-4 lg:grid-cols-3">
+
+        {/* 손익 / BEP 현황 */}
+        <SectionCard title="손익 현황" description="손익분기점 달성 여부">
+          {hasData ? (
+            <div className="space-y-3">
+              {/* BEP 상태 뱃지 */}
+              {bepGap !== null ? (
+                <div
+                  className={cn(
+                    "flex items-start gap-2.5 rounded-lg px-3.5 py-3 text-sm",
+                    bepAbove
+                      ? "bg-emerald-50 border border-emerald-200"
+                      : "bg-amber-50 border border-amber-200",
+                  )}
+                >
+                  {bepAbove ? (
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                  ) : (
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                  )}
+                  <div>
+                    <p
+                      className={cn(
+                        "font-semibold",
+                        bepAbove ? "text-emerald-700" : "text-amber-700",
+                      )}
+                    >
+                      {bepAbove ? "손익분기점 달성" : "손익분기점 미달"}
+                    </p>
+                    <p
+                      className={cn(
+                        "text-xl font-bold tabular-nums mt-0.5",
+                        bepAbove ? "text-emerald-600" : "text-amber-600",
+                      )}
+                    >
+                      {bepGap >= 0 ? "+" : ""}
+                      {formatKrwCompact(bepGap)}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground rounded-lg bg-secondary px-3 py-2">
+                  설정에서 원가율을 입력하면 손익분기점을 계산합니다.
+                </p>
+              )}
+
+              {/* 최고 매출일 + 전월 대비 */}
+              <div className="grid grid-cols-2 gap-2">
+                <MiniStatCard
                   label="최고 매출일"
-                  primary={
+                  value={
                     monthly.bestSalesDate
                       ? formatShortDate(monthly.bestSalesDate)
-                      : "데이터 없음"
+                      : "—"
                   }
-                  secondary={
+                  sub={
                     monthly.bestSalesDate
                       ? formatKrwCompact(monthly.bestSalesAmount)
                       : undefined
                   }
-                  icon={<Trophy className="h-4 w-4" />}
+                  icon={<Trophy className="h-3 w-3" />}
                 />
-                <SummaryStat
-                  label="전월 대비"
-                  primary={formatSignedPercent(mom)}
-                  secondary={
+                <MiniStatCard
+                  label="전월 매출 대비"
+                  value={formatSignedPercent(mom)}
+                  sub={
                     mom === 0
                       ? "전월 데이터 없음"
                       : mom > 0
                         ? "성장 중"
                         : "감소 중"
                   }
+                  accent={mom > 0 ? "positive" : mom < 0 ? "negative" : "muted"}
                   icon={
                     mom > 0 ? (
-                      <TrendingUp className="h-4 w-4" />
+                      <TrendingUp className="h-3 w-3" />
                     ) : mom < 0 ? (
-                      <TrendingDown className="h-4 w-4" />
+                      <TrendingDown className="h-3 w-3" />
                     ) : (
-                      <Minus className="h-4 w-4" />
+                      <Minus className="h-3 w-3" />
                     )
                   }
-                  accent={mom > 0 ? "positive" : mom < 0 ? "negative" : "muted"}
                 />
-                <SummaryStat
-                  label="손익분기점 매출"
-                  primary={
-                    monthly.bepSales !== null
-                      ? formatKrwCompact(monthly.bepSales)
-                      : "계산 불가"
-                  }
-                  secondary={
-                    monthly.bepSales !== null
-                      ? `공헌이익률 ${formatPercent(monthly.contributionMarginRate * 100)}`
-                      : "공헌이익률 ≤ 0"
-                  }
-                  icon={<Target className="h-4 w-4" />}
-                />
-              </dl>
+              </div>
 
-              {/* 운영 인사이트 */}
-              {insights.length > 0 && (
-                <div className="mt-5 border-t border-border pt-4">
-                  <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    이달 인사이트
-                  </p>
-                  <ul className="space-y-2">
-                    {insights.map((ins, i) => (
-                      <li
-                        key={i}
-                        className={cn(
-                          "flex items-start gap-2 text-sm leading-snug",
-                          ins.tone === "positive" && "text-emerald-600",
-                          ins.tone === "caution" && "text-amber-600",
-                          ins.tone === "neutral" && "text-foreground",
-                        )}
-                      >
-                        <span
-                          className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-current"
-                          aria-hidden="true"
-                        />
-                        <span>{ins.text}</span>
-                      </li>
-                    ))}
-                  </ul>
+              {/* BEP 상세 */}
+              {monthly.bepSales !== null && (
+                <div className="space-y-1 rounded-lg bg-secondary/50 px-3 py-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">손익분기 매출</span>
+                    <span className="font-medium tabular-nums">
+                      {formatKrwCompact(monthly.bepSales)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">공헌이익률</span>
+                    <span className="font-medium">
+                      {formatPercent(monthly.contributionMarginRate * 100)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">이번 달 기록</span>
+                    <span className="font-medium">{monthly.totalDaysWithData}일</span>
+                  </div>
                 </div>
               )}
-            </>
+            </div>
           ) : (
-            <EmptyState message="선택한 월에 입력된 데이터가 없습니다." />
+            <EmptyState message="매출 데이터를 입력하면 손익 현황을 확인할 수 있습니다." />
           )}
         </SectionCard>
 
-        {/* 오른쪽: 채널별 매출 비중 */}
-        <SectionCard
-          title="채널별 매출 비중"
-          description="비중 기준 · 금액은 보조"
-        >
-          {hasData ? (
-            <ul className="space-y-4 text-sm">
-              {CHANNELS.map((channel) => {
-                const sales = monthly.channelSales[channel.id] ?? 0;
-                const share = monthly.channelSalesShare[channel.id] ?? 0;
-                const sharePct = share * 100;
-
-                return (
-                  <li key={channel.id}>
-                    {/* 채널명 / 비중 % */}
-                    <div className="mb-1.5 flex items-center justify-between">
-                      <span className="font-medium text-foreground">
-                        {channel.label}
-                      </span>
-                      <span className="tabular-nums text-sm font-semibold text-foreground">
-                        {formatPercent(sharePct)}
-                      </span>
-                    </div>
-                    {/* 비중 바 — width = 실제 비중 % */}
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-                      <div
-                        className="h-full rounded-full bg-primary/70 transition-all duration-500"
-                        style={{ width: `${Math.min(100, sharePct)}%` }}
-                      />
-                    </div>
-                    {/* 금액 보조 */}
-                    <p className="mt-1 text-xs tabular-nums text-muted-foreground">
-                      {formatKrwCompact(sales)}
-                      <span className="ml-1 font-mono opacity-70">
-                        ({formatKRW(sales)})
-                      </span>
-                    </p>
-                  </li>
-                );
-              })}
+        {/* 이달 인사이트 */}
+        <SectionCard title="이달 인사이트" description="운영 핵심 요약">
+          {insights.length > 0 ? (
+            <ul className="space-y-2.5">
+              {insights.map((ins, i) => (
+                <li
+                  key={i}
+                  className={cn(
+                    "flex items-start gap-2.5 text-sm leading-snug",
+                    ins.tone === "positive" && "text-emerald-700",
+                    ins.tone === "caution" && "text-amber-700",
+                    ins.tone === "neutral" && "text-foreground",
+                  )}
+                >
+                  <span
+                    className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-current"
+                    aria-hidden="true"
+                  />
+                  <span>{ins.text}</span>
+                </li>
+              ))}
             </ul>
           ) : (
-            <EmptyState message="채널별 매출 데이터가 없습니다." />
+            <EmptyState message="매출 데이터를 입력하면 인사이트를 확인할 수 있습니다." />
+          )}
+
+          {/* 예측 문구 (인사이트 내부 하단) */}
+          {prediction && (
+            <div className="mt-4 rounded-lg bg-primary/[0.06] border border-primary/20 px-3 py-2.5">
+              <p className="text-xs font-medium text-primary">{prediction}</p>
+            </div>
+          )}
+        </SectionCard>
+
+        {/* 운영 알림 */}
+        <SectionCard title="운영 알림" description="채널·수수료·수익 점검">
+          {alerts.length > 0 ? (
+            <ul className="space-y-2">
+              {alerts.map((alert, i) => (
+                <li
+                  key={i}
+                  className={cn(
+                    "flex items-start gap-2.5 rounded-lg px-3 py-2.5 text-xs leading-snug",
+                    alert.type === "info" &&
+                      "bg-blue-50 border border-blue-100 text-blue-800",
+                    alert.type === "warning" &&
+                      "bg-amber-50 border border-amber-200 text-amber-800",
+                    alert.type === "caution" &&
+                      "bg-red-50 border border-red-100 text-red-800",
+                  )}
+                >
+                  {alert.type === "info" && (
+                    <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-500" />
+                  )}
+                  {alert.type === "warning" && (
+                    <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
+                  )}
+                  {alert.type === "caution" && (
+                    <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-500" />
+                  )}
+                  <span className="font-medium">{alert.text}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyState message="매출 데이터를 입력하면 운영 알림을 확인할 수 있습니다." />
           )}
         </SectionCard>
       </div>
@@ -422,22 +657,22 @@ export default function DashboardPage() {
 /* 서브 컴포넌트                                                         */
 /* ------------------------------------------------------------------ */
 
-type StatAccent = "default" | "positive" | "negative" | "muted";
+type MiniAccent = "default" | "positive" | "negative" | "muted";
 
-function SummaryStat({
+function MiniStatCard({
   label,
-  primary,
-  secondary,
+  value,
+  sub,
   icon,
   accent = "default",
 }: {
   label: string;
-  primary: string;
-  secondary?: string;
+  value: string;
+  sub?: string;
   icon?: React.ReactNode;
-  accent?: StatAccent;
+  accent?: MiniAccent;
 }) {
-  const accentClass: Record<StatAccent, string> = {
+  const accentClass: Record<MiniAccent, string> = {
     default: "text-foreground",
     positive: "text-emerald-600",
     negative: "text-destructive",
@@ -445,21 +680,21 @@ function SummaryStat({
   };
 
   return (
-    <div className="rounded-lg border border-border bg-secondary/30 px-4 py-3">
-      <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+    <div className="rounded-lg border border-border bg-secondary/30 px-3 py-2.5">
+      <div className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
         {icon}
         <span>{label}</span>
       </div>
       <p
         className={cn(
-          "mt-1 text-lg font-semibold tabular-nums tracking-tight",
+          "mt-1 text-base font-bold tabular-nums tracking-tight",
           accentClass[accent],
         )}
       >
-        {primary}
+        {value}
       </p>
-      {secondary ? (
-        <p className="text-xs text-muted-foreground">{secondary}</p>
+      {sub ? (
+        <p className="text-[10px] text-muted-foreground leading-tight">{sub}</p>
       ) : null}
     </div>
   );

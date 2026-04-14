@@ -23,7 +23,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/app/entries", label: "매출 입력", icon: NotebookPen },
   { href: "/app/settlement", label: "월별 정산", icon: Calculator },
   { href: "/app/settings", label: "설정", icon: Settings },
-  { href: "/app/backup", label: "백업/복원", icon: DatabaseBackup },
+  { href: "/app/backup", label: "백업 / 복원", icon: DatabaseBackup },
   { href: "/app/billing", label: "결제 / 구독", icon: CreditCard },
 ];
 
@@ -31,19 +31,21 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden md:flex md:w-60 md:flex-col md:border-r md:border-border md:bg-white">
-      <div className="flex h-16 items-center border-b border-border px-6">
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
-            J
+    <aside className="hidden md:flex md:w-[220px] md:shrink-0 md:flex-col md:border-r md:border-border md:bg-white">
+      {/* 로고 */}
+      <div className="flex h-14 items-center border-b border-border px-5">
+        <Link href="/app/dashboard" className="flex items-center gap-2.5 group">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-[11px] font-bold text-primary-foreground select-none shadow-sm group-hover:shadow-md transition-shadow">
+            장
           </span>
-          <span className="text-base font-semibold text-foreground">
+          <span className="text-sm font-semibold tracking-tight text-foreground">
             장사 계산기
           </span>
         </Link>
       </div>
 
-      <nav aria-label="주 메뉴" className="flex-1 space-y-1 p-4">
+      {/* 내비게이션 */}
+      <nav aria-label="주 메뉴" className="flex-1 px-3 py-3 space-y-0.5">
         {NAV_ITEMS.map((item) => {
           const active =
             pathname === item.href || pathname?.startsWith(`${item.href}/`);
@@ -54,23 +56,29 @@ export function Sidebar() {
               href={item.href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                 active
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+                  ? "bg-primary/[0.08] text-primary font-semibold"
+                  : "font-medium text-muted-foreground hover:bg-secondary hover:text-foreground",
               )}
             >
-              <Icon className="h-4 w-4" aria-hidden="true" />
+              <Icon
+                className={cn(
+                  "h-4 w-4 shrink-0",
+                  active ? "text-primary" : "text-muted-foreground",
+                )}
+                aria-hidden="true"
+              />
               <span>{item.label}</span>
             </Link>
           );
         })}
       </nav>
 
-      <div className="border-t border-border p-4 text-xs text-muted-foreground">
-        <p className="font-medium text-foreground">로컬 저장형 MVP</p>
-        <p className="mt-1 leading-relaxed">
-          모든 데이터는 이 브라우저에만 저장됩니다.
+      {/* 푸터 */}
+      <div className="border-t border-border px-5 py-3">
+        <p className="text-[11px] font-medium text-muted-foreground/70 leading-relaxed">
+          모든 데이터는 Supabase에 안전하게 저장됩니다.
         </p>
       </div>
     </aside>

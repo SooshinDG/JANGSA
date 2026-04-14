@@ -10,13 +10,14 @@ const NAV_ITEMS = [
   { href: "/app/entries", label: "매출 입력" },
   { href: "/app/settlement", label: "월별 정산" },
   { href: "/app/settings", label: "설정" },
-  { href: "/app/backup", label: "백업/복원" },
-  { href: "/app/billing", label: "결제" },
+  { href: "/app/backup", label: "백업" },
+  { href: "/app/billing", label: "구독" },
 ] as const;
 
 function currentPageLabel(pathname: string | null): string {
   const match = NAV_ITEMS.find(
-    (item) => pathname === item.href || pathname?.startsWith(`${item.href}/`),
+    (item) =>
+      pathname === item.href || pathname?.startsWith(`${item.href}/`),
   );
   return match?.label ?? "대시보드";
 }
@@ -26,26 +27,28 @@ export function Topbar() {
   const pageLabel = currentPageLabel(pathname);
 
   return (
-    <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-border bg-white/90 px-4 backdrop-blur md:px-8">
+    <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-white/95 px-4 backdrop-blur-sm md:px-6">
+      {/* 왼쪽: 모바일 메뉴 버튼 + 페이지 레이블 */}
       <div className="flex items-center gap-3">
         <button
           type="button"
-          className="flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground md:hidden"
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-secondary transition-colors md:hidden"
           aria-label="메뉴 열기"
         >
           <Menu className="h-4 w-4" />
         </button>
-        <div className="flex flex-col">
-          <span className="text-xs font-medium text-muted-foreground">
+        <div>
+          <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/60 hidden md:block">
             관리 콘솔
-          </span>
-          <h1 className="text-base font-semibold text-foreground">
+          </p>
+          <h1 className="text-sm font-semibold text-foreground leading-none mt-0.5">
             {pageLabel}
           </h1>
         </div>
       </div>
 
-      <nav aria-label="상단 빠른 이동" className="hidden items-center gap-1 md:flex">
+      {/* 오른쪽: 빠른 이동 (데스크톱) */}
+      <nav aria-label="상단 빠른 이동" className="hidden items-center gap-0.5 md:flex">
         {NAV_ITEMS.map((item) => {
           const active =
             pathname === item.href || pathname?.startsWith(`${item.href}/`);
@@ -55,9 +58,9 @@ export function Topbar() {
               href={item.href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                "rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors",
                 active
-                  ? "bg-accent text-accent-foreground"
+                  ? "bg-primary/[0.08] text-primary"
                   : "text-muted-foreground hover:bg-secondary hover:text-foreground",
               )}
             >

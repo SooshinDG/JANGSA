@@ -14,18 +14,19 @@ interface ChartPoint {
   sales: number;
 }
 
-/** 주어진 월의 일 수 계산 */
 function daysInMonth(month: string): number {
   const [y, m] = month.split("-").map(Number);
   return new Date(y, m, 0).getDate();
 }
 
 /**
- * 월별 일별 총매출 라인 차트 (pure SVG, 외부 의존성 없음).
+ * 월별 일별 총매출 라인 차트 (pure SVG).
  *
- * - 데이터가 없는 날은 선에서 제외하고 점만 있는 날만 표시
- * - 호버 시 SVG <title> 로 툴팁 제공
- * - 반응형: viewBox 고정 + width=100%
+ * 개선된 버전:
+ * - 수평 보조선 (25 / 50 / 75 / 100 %)
+ * - 데이터 점 + SVG title 툴팁
+ * - gradient area fill
+ * - 더 선명한 그리드 / 텍스트 위계
  */
 export function DailySalesChart({ entries, month }: DailySalesChartProps) {
   const { points, maxSales, totalDays } = useMemo(() => {
@@ -53,10 +54,10 @@ export function DailySalesChart({ entries, month }: DailySalesChartProps) {
 
   if (points.length === 0) return null;
 
-  /* ── SVG 좌표 계산 ── */
-  const W = 560;
-  const H = 110;
-  const PAD = { top: 10, right: 12, bottom: 24, left: 12 };
+  /* ── SVG 치수 ── */
+  const W = 600;
+  const H = 130;
+  const PAD = { top: 14, right: 16, bottom: 28, left: 14 };
   const cW = W - PAD.left - PAD.right;
   const cH = H - PAD.top - PAD.bottom;
 
@@ -70,7 +71,7 @@ export function DailySalesChart({ entries, month }: DailySalesChartProps) {
     .map((p) => `${xOf(p.day).toFixed(1)},${yOf(p.sales).toFixed(1)}`)
     .join(" ");
 
-  /* area fill path */
+  /* area fill */
   const baseY = (PAD.top + cH).toFixed(1);
   const areaPath =
     `M ${xOf(points[0].day).toFixed(1)},${baseY} ` +
@@ -79,16 +80,13 @@ export function DailySalesChart({ entries, month }: DailySalesChartProps) {
       .join(" ") +
     ` L ${xOf(points[points.length - 1].day).toFixed(1)},${baseY} Z`;
 
-  /* x축 레이블: 1일, 중간, 마지막 날 */
-  const midDay = Math.round(totalDays / 2);
-  const xLabels = [1, midDay, totalDays].map((d) => ({
-    day: d,
-    x: xOf(d),
-    label: `${d}일`,
-  }));
+  /* 수평 보조선 (25 / 50 / 75%) */
+  const gridRatios = [0.25, 0.5, 0.75, 1.0];
 
-  /* y축: 최고값 레이블 */
-  const yTopLabel = formatKrwCompact(maxSales);
+  /* x축 레이블 */
+  const xLabelDays = Array.from(
+    new Set([1, Math.round(totalDays / 3), Math.round((2 * totalDays) / 3), totalDays]),
+  );
 
   return (
     <div className="w-full" aria-label={`${month} 일별 총매출 차트`}>
@@ -99,13 +97,48 @@ export function DailySalesChart({ entries, month }: DailySalesChartProps) {
         aria-label="일별 총매출 라인 차트"
       >
         <defs>
-          <linearGradient id="salesAreaGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.18" />
+          <linearGradient id="areaGradFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.15" />
             <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.01" />
           </linearGradient>
+          {/* 클리핑 마스크: 차트 영역 내에만 렌더링 */}
+          <clipPath id="chartClip">
+            <rect x={PAD.left} y={PAD.top} width={cW} height={cH + 1} />
+          </clipPath>
         </defs>
 
-        {/* 기준선 (0) */}
+        {/* ── 수평 보조선 ── */}
+        {gridRatios.map((ratio) => {
+          const y = yOf(maxSales * ratio);
+          const isBase = ratio === 1.0;
+          return (
+            <g key={ratio}>
+              <line
+                x1={PAD.left}
+                y1={y}
+                x2={W - PAD.right}
+                y2={y}
+                stroke="hsl(var(--border))"
+                strokeWidth={isBase ? "1" : "0.5"}
+                strokeDasharray={isBase ? undefined : "3 3"}
+              />
+              {/* y축 값 레이블 (100%만) */}
+              {isBase && (
+                <text
+                  x={PAD.left}
+                  y={y - 3}
+                  fontSize="8.5"
+                  fill="hsl(var(--muted-foreground))"
+                  textAnchor="start"
+                >
+                  {formatKrwCompact(maxSales)}
+                </text>
+              )}
+            </g>
+          );
+        })}
+
+        {/* ── 기준선 (하단) ── */}
         <line
           x1={PAD.left}
           y1={PAD.top + cH}
@@ -115,67 +148,62 @@ export function DailySalesChart({ entries, month }: DailySalesChartProps) {
           strokeWidth="1"
         />
 
-        {/* 최고값 보조선 */}
-        <line
-          x1={PAD.left}
-          y1={PAD.top}
-          x2={W - PAD.right}
-          y2={PAD.top}
-          stroke="hsl(var(--border))"
-          strokeWidth="1"
-          strokeDasharray="4 4"
-        />
+        {/* ── 영역 채우기 ── */}
+        <path d={areaPath} fill="url(#areaGradFill)" clipPath="url(#chartClip)" />
 
-        {/* 최고값 레이블 */}
-        <text
-          x={PAD.left}
-          y={PAD.top - 2}
-          fontSize="9"
-          fill="hsl(var(--muted-foreground))"
-          textAnchor="start"
-        >
-          {yTopLabel}
-        </text>
-
-        {/* 영역 채우기 */}
-        <path d={areaPath} fill="url(#salesAreaGrad)" />
-
-        {/* 라인 */}
+        {/* ── 라인 ── */}
         <polyline
           points={linePoints}
           fill="none"
           stroke="hsl(var(--primary))"
-          strokeWidth="1.8"
+          strokeWidth="2"
           strokeLinejoin="round"
           strokeLinecap="round"
+          clipPath="url(#chartClip)"
         />
 
-        {/* 데이터 점 */}
-        {points.map((p) => (
-          <g key={p.day}>
-            <title>{`${month}-${String(p.day).padStart(2, "0")}: ${formatKrwCompact(p.sales)}`}</title>
-            <circle
-              cx={xOf(p.day)}
-              cy={yOf(p.sales)}
-              r="3"
-              fill="hsl(var(--primary))"
-              stroke="hsl(var(--card))"
-              strokeWidth="1.5"
-            />
-          </g>
-        ))}
+        {/* ── 데이터 점 ── */}
+        {points.map((p) => {
+          const cx = xOf(p.day);
+          const cy = yOf(p.sales);
+          return (
+            <g key={p.day}>
+              <title>{`${month}-${String(p.day).padStart(2, "0")}: ${formatKrwCompact(p.sales)}`}</title>
+              {/* 외곽 링 (hover 클릭 영역 확장) */}
+              <circle
+                cx={cx}
+                cy={cy}
+                r="8"
+                fill="transparent"
+                className="cursor-pointer"
+              />
+              {/* 실제 점 */}
+              <circle
+                cx={cx}
+                cy={cy}
+                r="3.5"
+                fill="hsl(var(--primary))"
+                stroke="hsl(var(--card))"
+                strokeWidth="2"
+                className="pointer-events-none"
+              />
+            </g>
+          );
+        })}
 
-        {/* x축 레이블 */}
-        {xLabels.map(({ day, x, label }) => (
+        {/* ── x축 레이블 ── */}
+        {xLabelDays.map((d, i) => (
           <text
-            key={day}
-            x={x}
-            y={H - 4}
+            key={d}
+            x={xOf(d)}
+            y={H - 5}
             fontSize="9"
             fill="hsl(var(--muted-foreground))"
-            textAnchor={day === 1 ? "start" : day === totalDays ? "end" : "middle"}
+            textAnchor={
+              i === 0 ? "start" : i === xLabelDays.length - 1 ? "end" : "middle"
+            }
           >
-            {label}
+            {d}일
           </text>
         ))}
       </svg>

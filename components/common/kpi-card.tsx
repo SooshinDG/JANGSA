@@ -14,7 +14,7 @@ export interface KpiCardProps {
   className?: string;
 }
 
-const ACCENT_CLASS: Record<KpiAccent, string> = {
+const ACCENT_VALUE_CLASS: Record<KpiAccent, string> = {
   default: "text-foreground",
   primary: "text-primary",
   positive: "text-emerald-600",
@@ -24,7 +24,8 @@ const ACCENT_CLASS: Record<KpiAccent, string> = {
 
 /**
  * 읽기 전용 지표 카드.
- * 계산 엔진의 결과를 가장 작은 단위로 화면에 표시할 때 사용한다.
+ * `className` 으로 테두리 강조 색상 등을 추가할 수 있다.
+ *   예: className="border-t-[3px] border-t-primary"
  */
 export function KpiCard({
   label,
@@ -38,30 +39,31 @@ export function KpiCard({
   return (
     <div
       className={cn(
-        "rounded-xl border border-border bg-card p-5 shadow-sm",
+        "rounded-xl border border-border bg-card px-5 py-4",
+        "shadow-[0_1px_3px_0_rgba(0,0,0,0.04),0_1px_2px_-1px_rgba(0,0,0,0.04)]",
         className,
       )}
     >
       <div className="flex items-start justify-between gap-2">
-        <span className="text-xs font-medium text-muted-foreground">
+        <span className="text-xs font-medium text-muted-foreground leading-tight">
           {label}
         </span>
         {icon ? (
-          <span className="text-muted-foreground [&>svg]:h-4 [&>svg]:w-4">
+          <span className="text-muted-foreground [&>svg]:h-4 [&>svg]:w-4 shrink-0">
             {icon}
           </span>
         ) : null}
       </div>
       <p
         className={cn(
-          "mt-2 text-2xl font-semibold tracking-tight tabular-nums",
-          ACCENT_CLASS[accent],
+          "mt-2.5 text-2xl font-bold tracking-tight tabular-nums",
+          ACCENT_VALUE_CLASS[accent],
         )}
       >
         {value}
       </p>
       {hint ? (
-        <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
+        <p className="mt-1 text-xs text-muted-foreground leading-snug">{hint}</p>
       ) : null}
       {footer ? <div className="mt-3">{footer}</div> : null}
     </div>

@@ -7,6 +7,8 @@ interface SectionCardProps {
   actions?: ReactNode;
   footer?: ReactNode;
   className?: string;
+  /** 카드 내부 패딩 제거가 필요한 경우 (차트 full-bleed 등) */
+  noPadding?: boolean;
   children: ReactNode;
 }
 
@@ -16,6 +18,7 @@ export function SectionCard({
   actions,
   footer,
   className,
+  noPadding = false,
   children,
 }: SectionCardProps) {
   const hasHeader = Boolean(title || description || actions);
@@ -23,22 +26,19 @@ export function SectionCard({
   return (
     <section
       className={cn(
-        "rounded-xl border border-border bg-card text-card-foreground shadow-sm",
+        "rounded-xl border border-border bg-card text-card-foreground",
+        "shadow-[0_1px_3px_0_rgba(0,0,0,0.04),0_1px_2px_-1px_rgba(0,0,0,0.04)]",
         className,
       )}
     >
       {hasHeader ? (
-        <header className="flex flex-col gap-2 border-b border-border px-5 py-4 md:flex-row md:items-center md:justify-between">
+        <header className="flex flex-col gap-1.5 border-b border-border px-5 py-3.5 md:flex-row md:items-center md:justify-between">
           <div>
             {title ? (
-              <h3 className="text-sm font-semibold text-foreground">
-                {title}
-              </h3>
+              <h3 className="text-sm font-semibold text-foreground">{title}</h3>
             ) : null}
             {description ? (
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                {description}
-              </p>
+              <p className="text-xs text-muted-foreground">{description}</p>
             ) : null}
           </div>
           {actions ? (
@@ -46,7 +46,7 @@ export function SectionCard({
           ) : null}
         </header>
       ) : null}
-      <div className="px-5 py-5">{children}</div>
+      <div className={cn(noPadding ? "" : "px-5 py-4")}>{children}</div>
       {footer ? (
         <footer className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
           {footer}
@@ -62,15 +62,11 @@ interface PlaceholderProps {
   className?: string;
 }
 
-/**
- * 이후 단계에서 실제 UI로 교체될 자리 표시용 블록.
- * 단순 회색 박스가 아니라 다음 단계 작업 포인트를 명시한다.
- */
 export function Placeholder({ label, hint, className }: PlaceholderProps) {
   return (
     <div
       className={cn(
-        "flex min-h-[7rem] flex-col items-start justify-center rounded-lg border border-dashed border-border bg-secondary/40 px-4 py-5 text-sm",
+        "flex min-h-[6rem] flex-col items-start justify-center rounded-lg border border-dashed border-border bg-secondary/40 px-4 py-5 text-sm",
         className,
       )}
     >
