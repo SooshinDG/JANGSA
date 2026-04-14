@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { HeroMockup } from "@/components/marketing/hero-mockup";
 
 const FEATURES = [
   "배달의민족 · 요기요 · 쿠팡이츠 · POS 채널별 매출 자동 합산",
@@ -10,40 +11,53 @@ const FEATURES = [
 
 export default function MarketingLandingPage() {
   return (
-    <section className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-start gap-10 px-4 py-16 md:px-8 md:py-24">
-      <div className="max-w-2xl space-y-5">
-        <span className="inline-flex items-center gap-1 rounded-full bg-accent px-3 py-1 text-[11px] font-semibold text-accent-foreground">
-          7일 무료 체험 · 카드 등록 불필요
-        </span>
-        <h1 className="text-3xl font-bold leading-tight tracking-tight text-foreground md:text-5xl">
-          엑셀 없이,
-          <br />
-          매출·순이익·수수료를
-          <br />
-          자동으로 계산하세요
-        </h1>
-        <p className="text-sm leading-relaxed text-muted-foreground md:text-base">
-          배민 / 요기요 / 쿠팡이츠 / POS 매출을 입력하면 채널별 수수료와 원가,
-          고정비를 반영한 월별 정산을 자동으로 만들어 드립니다.
-          사장님이 해야 할 건 입력뿐입니다.
-        </p>
-        <div className="flex flex-wrap items-center gap-3">
-          <Link
-            href="/signup"
-            className="inline-flex h-11 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
-          >
-            7일 무료로 시작하기
-            <ArrowRight className="h-4 w-4" aria-hidden="true" />
-          </Link>
-          <Link
-            href="/pricing"
-            className="inline-flex h-11 items-center rounded-lg border border-border bg-white px-5 text-sm font-semibold text-foreground transition-colors hover:bg-secondary"
-          >
-            요금제 보기
-          </Link>
+    <section className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-14 md:px-8 md:py-20">
+
+      {/* ── 히어로 행: 왼쪽 텍스트 + 오른쪽 장식 패널 ── */}
+      <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:gap-10">
+
+        {/* 왼쪽: 헤드라인 + CTA */}
+        <div className="flex-1 space-y-5">
+          <span className="inline-flex items-center gap-1 rounded-full bg-accent px-3 py-1 text-[11px] font-semibold text-accent-foreground">
+            7일 무료 체험 · 카드 등록 불필요
+          </span>
+          <h1 className="text-3xl font-bold leading-tight tracking-tight text-foreground md:text-5xl">
+            엑셀 없이,
+            <br />
+            매출·순이익·수수료를
+            <br />
+            자동으로 계산하세요
+          </h1>
+          <p className="max-w-lg text-sm leading-relaxed text-muted-foreground md:text-base">
+            배민 / 요기요 / 쿠팡이츠 / POS 매출을 입력하면 채널별 수수료와 원가,
+            고정비를 반영한 월별 정산을 자동으로 만들어 드립니다.
+            사장님이 해야 할 건 입력뿐입니다.
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href="/signup"
+              className="inline-flex h-11 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+            >
+              7일 무료로 시작하기
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
+            <Link
+              href="/pricing"
+              className="inline-flex h-11 items-center rounded-lg border border-border bg-card px-5 text-sm font-semibold text-foreground transition-colors hover:bg-secondary"
+            >
+              요금제 보기
+            </Link>
+          </div>
         </div>
+
+        {/* 오른쪽: 장식용 대시보드 패널 (lg 이상에서만 표시) */}
+        <div className="hidden lg:flex lg:shrink-0 lg:items-center lg:justify-end">
+          <HeroMockup />
+        </div>
+
       </div>
 
+      {/* ── 피처 그리드 ── */}
       <ul className="grid w-full gap-3 sm:grid-cols-2">
         {FEATURES.map((f) => (
           <li

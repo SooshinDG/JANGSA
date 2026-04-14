@@ -8,7 +8,7 @@ import type { ReactNode } from "react";
 export default function MarketingLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <header className="sticky top-0 z-10 border-b border-border bg-white/90 backdrop-blur">
+      <header className="sticky top-0 z-10 border-b border-border bg-card/95 backdrop-blur">
         <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-4 md:px-8">
           <Link href="/" className="flex items-center gap-2">
             <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
@@ -44,7 +44,7 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
         </div>
       </header>
       <main className="flex flex-1 flex-col">{children}</main>
-      <footer className="border-t border-border bg-white">
+      <footer className="border-t border-border bg-card">
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-1 px-4 py-6 text-[11px] text-muted-foreground md:px-8">
           <p>© 2026 장사 계산기 · 7일 무료 체험 제공</p>
           <p>매출·순이익·수수료 자동 계산 SaaS (MVP)</p>
