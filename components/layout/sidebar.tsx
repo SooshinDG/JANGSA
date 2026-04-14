@@ -8,7 +8,6 @@ import {
   Calculator,
   Settings,
   DatabaseBackup,
-  CreditCard,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
@@ -24,7 +23,6 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/app/settlement", label: "월별 정산", icon: Calculator },
   { href: "/app/settings", label: "설정", icon: Settings },
   { href: "/app/backup", label: "백업 / 복원", icon: DatabaseBackup },
-  { href: "/app/billing", label: "결제 / 구독", icon: CreditCard },
 ];
 
 export function Sidebar() {

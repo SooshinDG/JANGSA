@@ -23,12 +23,6 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
             className="flex items-center gap-1 text-xs font-medium text-muted-foreground"
           >
             <Link
-              href="/pricing"
-              className="rounded-md px-3 py-1.5 transition-colors hover:bg-secondary hover:text-foreground"
-            >
-              요금제
-            </Link>
-            <Link
               href="/login"
               className="rounded-md px-3 py-1.5 transition-colors hover:bg-secondary hover:text-foreground"
             >
@@ -38,7 +32,7 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
               href="/signup"
               className="ml-1 inline-flex h-8 items-center rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
             >
-              무료 체험 시작
+              무료 시작
             </Link>
           </nav>
         </div>
@@ -46,8 +40,8 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
       <main className="flex flex-1 flex-col">{children}</main>
       <footer className="border-t border-border bg-card">
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-1 px-4 py-6 text-[11px] text-muted-foreground md:px-8">
-          <p>© 2026 장사 계산기 · 7일 무료 체험 제공</p>
-          <p>매출·순이익·수수료 자동 계산 SaaS (MVP)</p>
+          <p>© 2026 장사 계산기 · 무료 서비스</p>
+          <p>매출·순이익·수수료 자동 계산 서비스 (MVP)</p>
         </div>
       </footer>
     </div>

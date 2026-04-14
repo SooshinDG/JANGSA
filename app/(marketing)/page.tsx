@@ -19,7 +19,7 @@ export default function MarketingLandingPage() {
         {/* 왼쪽: 헤드라인 + CTA */}
         <div className="flex-1 space-y-5">
           <span className="inline-flex items-center gap-1 rounded-full bg-accent px-3 py-1 text-[11px] font-semibold text-accent-foreground">
-            7일 무료 체험 · 카드 등록 불필요
+            무료 · 카드 등록 불필요
           </span>
           <h1 className="text-3xl font-bold leading-tight tracking-tight text-foreground md:text-5xl">
             엑셀 없이,
@@ -38,14 +38,14 @@ export default function MarketingLandingPage() {
               href="/signup"
               className="inline-flex h-11 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
             >
-              7일 무료로 시작하기
+              무료로 시작하기
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
             <Link
-              href="/pricing"
+              href="/login"
               className="inline-flex h-11 items-center rounded-lg border border-border bg-card px-5 text-sm font-semibold text-foreground transition-colors hover:bg-secondary"
             >
-              요금제 보기
+              로그인
             </Link>
           </div>
         </div>

@@ -2,12 +2,10 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { bootstrapAppAccount } from "./bootstrap";
-import { getAccessStatusFromStore } from "./access";
 import type {
   StoreContext,
   StoreMembershipRow,
   StoreRow,
-  SubscriptionRow,
 } from "./types";
 
 /**
@@ -21,6 +19,9 @@ import type {
  * ⚠️ 실패 진단 시 user-scoped client 와 admin client 양쪽을 대조해
  *    "실제로 row 가 없는 것"(admin 도 못 봄)인지
  *    "RLS 가 차단하는 것"(admin 은 보이지만 user 는 못 봄)인지 구분한다.
+ *
+ * 무료 서비스 전환 후: subscription 조회 및 accessStatus 계산 제거.
+ * accessStatus 는 항상 "free" 로 고정.
  */
 
 const LOG = "[requireStoreContext]";
@@ -127,8 +128,7 @@ export async function requireStoreContext(): Promise<StoreContext> {
       console.log(
         `${LOG} bootstrap done storeId=${bsResult.storeId} ` +
           `profileV=${bsResult.profileVerified} storeV=${bsResult.storeVerified} ` +
-          `membershipV=${bsResult.membershipVerified} settingsV=${bsResult.settingsVerified} ` +
-          `subscriptionV=${bsResult.subscriptionVerified}`,
+          `membershipV=${bsResult.membershipVerified} settingsV=${bsResult.settingsVerified}`,
       );
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -247,29 +247,9 @@ export async function requireStoreContext(): Promise<StoreContext> {
 
   const store = storeFromUserClient!;
 
-  /* ---- 7) subscription 조회 ---- */
-  const { data: subscription, error: subErr } = await userClient
-    .from("subscriptions")
-    .select("*")
-    .eq("store_id", store.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle<SubscriptionRow>();
-
-  if (subErr) {
-    console.warn(`${LOG} subscription select (userClient) error: ${subErr.message}`);
-  }
-  console.log(
-    `${LOG} subscription (userClient): ${
-      subscription ? `id=${subscription.id} status=${subscription.status}` : "none"
-    }`,
-  );
-
-  const accessStatus = getAccessStatusFromStore(store);
-
   console.log(
     `${LOG} resolved OK userId=${user.id} storeId=${store.id} ` +
-      `accessStatus=${accessStatus} bootstrapRan=${bootstrapRan}`,
+      `accessStatus=free bootstrapRan=${bootstrapRan}`,
   );
 
   return {
@@ -277,7 +257,6 @@ export async function requireStoreContext(): Promise<StoreContext> {
     email: user.email ?? null,
     store,
     membership,
-    subscription: subscription ?? null,
-    accessStatus,
+    accessStatus: "free",
   };
 }

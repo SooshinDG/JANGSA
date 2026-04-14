@@ -1,21 +1,17 @@
 "use client";
 
 import { createContext, useContext, type ReactNode } from "react";
-import type { AccessStatus } from "@/lib/auth/types";
-import { isWriteAllowed } from "@/lib/auth/access";
 
 /**
  * 현재 store 의 접근 권한 정보를 하위 컴포넌트에 전달하는 Context.
  *
- * `AppStateContextValue` 와 분리되어 있어 legacy Dexie provider 를 건드리지 않는다.
+ * 무료 서비스 전환 후: canWrite 는 항상 true, accessStatus 제거.
  * `/app/*` 보호 영역 레이아웃에서 `requireStoreContext()` 의 결과를 주입한다.
  */
 
 export interface StoreAccessContextValue {
-  /** 현재 매장의 접근 상태 */
-  accessStatus: AccessStatus;
-  /** trialing / active 일 때만 true (settings/entries 쓰기 허용) */
-  canWrite: boolean;
+  /** 항상 true — 무료 서비스로 전환 후 모든 쓰기 허용 */
+  canWrite: true;
   /** 현재 매장 ID (backup 등에서 사용) */
   storeId: string;
 }
@@ -23,19 +19,16 @@ export interface StoreAccessContextValue {
 const StoreAccessContext = createContext<StoreAccessContextValue | null>(null);
 
 interface ProviderProps {
-  accessStatus: AccessStatus;
   storeId: string;
   children: ReactNode;
 }
 
 export function StoreAccessProvider({
-  accessStatus,
   storeId,
   children,
 }: ProviderProps) {
   const value: StoreAccessContextValue = {
-    accessStatus,
-    canWrite: isWriteAllowed(accessStatus),
+    canWrite: true,
     storeId,
   };
 

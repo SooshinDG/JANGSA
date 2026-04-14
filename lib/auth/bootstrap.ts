@@ -16,10 +16,12 @@ import { buildDefaultSettings } from "@/lib/utils/default-state";
  *   - verify null 하나로 전체 onboarding 을 죽이면 사용자가 반복적으로 로그인 실패
  *
  * Service Role 로 동작하므로 RLS 를 우회한다.
+ *
+ * 무료 서비스 전환 후: subscription 생성(step 5) 제거.
+ * store.status = "active", trial 관련 컬럼 null.
  */
 
 const LOG = "[bootstrapAppAccount]";
-const TRIAL_DAYS = 7;
 const DEFAULT_STORE_NAME = "내 매장";
 
 export interface BootstrapArgs {
@@ -39,8 +41,6 @@ export interface BootstrapResult {
   membershipVerified: boolean;
   settingsCreated: boolean;
   settingsVerified: boolean;
-  subscriptionCreated: boolean;
-  subscriptionVerified: boolean;
 }
 
 function isUniqueViolation(code: string | undefined): boolean {
@@ -66,8 +66,6 @@ export async function bootstrapAppAccount(
     membershipVerified: false,
     settingsCreated: false,
     settingsVerified: false,
-    subscriptionCreated: false,
-    subscriptionVerified: false,
   };
 
   try {
@@ -125,12 +123,10 @@ export async function bootstrapAppAccount(
     /* ============================================================ */
     /* 2. STORE                                                      */
     /* ============================================================ */
-    let trialStartedAt: string;
-    let trialEndsAt: string;
     {
       const check1 = await admin
         .from("stores")
-        .select("id, trial_started_at, trial_ends_at")
+        .select("id")
         .eq("owner_user_id", args.userId)
         .order("created_at", { ascending: true })
         .limit(1)
@@ -146,23 +142,14 @@ export async function bootstrapAppAccount(
 
       if (check1.data) {
         result.storeId = check1.data.id as string;
-        trialStartedAt = check1.data.trial_started_at as string;
-        trialEndsAt = check1.data.trial_ends_at as string;
         result.storeVerified = true;
       } else {
-        const now = new Date();
-        const ends = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
-        trialStartedAt = now.toISOString();
-        trialEndsAt = ends.toISOString();
-
         const { data: inserted, error: insErr } = await admin
           .from("stores")
           .insert({
             owner_user_id: args.userId,
             store_name: args.storeName?.trim() || DEFAULT_STORE_NAME,
-            status: "trialing",
-            trial_started_at: trialStartedAt,
-            trial_ends_at: trialEndsAt,
+            status: "active",
           })
           .select("id")
           .single();
@@ -314,69 +301,12 @@ export async function bootstrapAppAccount(
     }
 
     /* ============================================================ */
-    /* 5. SUBSCRIPTION                                               */
-    /* ============================================================ */
-    {
-      const check1 = await admin
-        .from("subscriptions")
-        .select("id, store_id, status")
-        .eq("store_id", result.storeId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      console.log(
-        `${LOG} subscription check1 storeId=${result.storeId} data=${JSON.stringify(check1.data)} error=${check1.error?.message ?? "null"} status=${check1.status}`,
-      );
-
-      if (check1.data) {
-        result.subscriptionVerified = true;
-      } else {
-        const { error: wErr } = await admin.from("subscriptions").insert({
-          store_id: result.storeId,
-          status: "trialing",
-          trial_started_at: trialStartedAt,
-          trial_ends_at: trialEndsAt,
-        });
-
-        if (wErr) {
-          throw new Error(`subscription insert 실패: ${wErr.message}`);
-        }
-        result.subscriptionCreated = true;
-
-        // verify
-        const check2 = await admin
-          .from("subscriptions")
-          .select("id, store_id, status")
-          .eq("store_id", result.storeId)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        console.log(
-          `${LOG} subscription verify storeId=${result.storeId} data=${JSON.stringify(check2.data)} error=${check2.error?.message ?? "null"} status=${check2.status}`,
-        );
-
-        if (check2.data) {
-          result.subscriptionVerified = true;
-        } else {
-          console.warn(
-            `${LOG} subscription verify returned no row but insert succeeded → treating as verified (possible replica lag)`,
-          );
-          result.subscriptionVerified = true;
-        }
-      }
-      console.log(`${LOG} subscription done created=${result.subscriptionCreated} verified=${result.subscriptionVerified}`);
-    }
-
-    /* ============================================================ */
     /* DONE                                                          */
     /* ============================================================ */
     console.log(
       `${LOG} done userId=${args.userId} storeId=${result.storeId} ` +
         `profileV=${result.profileVerified} storeV=${result.storeVerified} ` +
-        `membershipV=${result.membershipVerified} settingsV=${result.settingsVerified} ` +
-        `subscriptionV=${result.subscriptionVerified}`,
+        `membershipV=${result.membershipVerified} settingsV=${result.settingsVerified}`,
     );
 
     return result;
