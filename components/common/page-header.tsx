@@ -12,17 +12,17 @@ interface PageHeaderProps {
  */
 export function PageHeader({ title, description, actions }: PageHeaderProps) {
   return (
-    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+    <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
       <div>
-        <h2 className="text-xl font-semibold tracking-tight text-foreground">
+        <h2 className="text-lg font-semibold tracking-tight text-foreground">
           {title}
         </h2>
         {description ? (
-          <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
         ) : null}
       </div>
       {actions ? (
-        <div className="flex flex-wrap items-center gap-2">{actions}</div>
+        <div className="flex flex-wrap items-center gap-2 md:mt-0.5">{actions}</div>
       ) : null}
     </div>
   );

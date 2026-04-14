@@ -54,10 +54,10 @@ export function DailySalesChart({ entries, month }: DailySalesChartProps) {
 
   if (points.length === 0) return null;
 
-  /* ── SVG 치수 — 높이를 키워 하단 허전함 해소 ── */
+  /* ── SVG 치수 ── */
   const W = 620;
-  const H = 152;
-  const PAD = { top: 18, right: 16, bottom: 26, left: 16 };
+  const H = 160;
+  const PAD = { top: 14, right: 16, bottom: 26, left: 48 };
   const cW = W - PAD.left - PAD.right;
   const cH = H - PAD.top - PAD.bottom;
 
@@ -113,11 +113,10 @@ export function DailySalesChart({ entries, month }: DailySalesChartProps) {
           </clipPath>
         </defs>
 
-        {/* ── 수평 보조선 ── */}
+        {/* ── 수평 보조선 + 좌측 Y축 레이블 ── */}
         {gridRatios.map((ratio) => {
           const y = yOf(maxSales * ratio);
           const isTop = ratio === 1.0;
-          const isBase = ratio === 0;
           return (
             <g key={ratio}>
               <line
@@ -126,36 +125,21 @@ export function DailySalesChart({ entries, month }: DailySalesChartProps) {
                 x2={W - PAD.right}
                 y2={y}
                 stroke="hsl(var(--border))"
-                strokeWidth={isTop ? "0.8" : "0.5"}
-                strokeDasharray={isTop || isBase ? undefined : "3 4"}
-                strokeOpacity={isTop ? "0.9" : "0.6"}
+                strokeWidth={isTop ? "0.7" : "0.5"}
+                strokeDasharray={isTop ? undefined : "3 5"}
+                strokeOpacity={isTop ? "0.8" : "0.5"}
               />
-              {/* 최고값 레이블 */}
-              {isTop && (
-                <text
-                  x={PAD.left + 2}
-                  y={y - 4}
-                  fontSize="8"
-                  fill="hsl(var(--muted-foreground))"
-                  fillOpacity="0.8"
-                  textAnchor="start"
-                >
-                  {formatKrwCompact(maxSales)}
-                </text>
-              )}
-              {/* 50% 레이블 */}
-              {ratio === 0.5 && (
-                <text
-                  x={PAD.left + 2}
-                  y={y - 3}
-                  fontSize="7.5"
-                  fill="hsl(var(--muted-foreground))"
-                  fillOpacity="0.55"
-                  textAnchor="start"
-                >
-                  {formatKrwCompact(maxSales * 0.5)}
-                </text>
-              )}
+              <text
+                x={PAD.left - 5}
+                y={y}
+                textAnchor="end"
+                dominantBaseline="middle"
+                fontSize="8"
+                fill="hsl(var(--muted-foreground))"
+                fillOpacity="0.65"
+              >
+                {formatKrwCompact(maxSales * ratio)}
+              </text>
             </g>
           );
         })}
@@ -184,31 +168,23 @@ export function DailySalesChart({ entries, month }: DailySalesChartProps) {
           clipPath="url(#chartClip)"
         />
 
-        {/* ── 데이터 점 ── */}
+        {/* ── 데이터 점 (클린 미니멀) ── */}
         {points.map((p) => {
           const cx = xOf(p.day);
           const cy = yOf(p.sales);
           return (
             <g key={p.day}>
               <title>{`${p.day}일: ${formatKrwCompact(p.sales)}`}</title>
-              {/* 넓은 클릭 영역 */}
-              <circle cx={cx} cy={cy} r="9" fill="transparent" className="cursor-pointer" />
-              {/* 외곽 링 */}
+              {/* 넓은 hover 영역 */}
+              <circle cx={cx} cy={cy} r="8" fill="transparent" className="cursor-pointer" />
+              {/* 점 */}
               <circle
                 cx={cx}
                 cy={cy}
-                r="4.5"
+                r="3"
                 fill="hsl(var(--card))"
                 stroke="#378ADD"
-                strokeWidth="2"
-                className="pointer-events-none"
-              />
-              {/* 내부 점 */}
-              <circle
-                cx={cx}
-                cy={cy}
-                r="2"
-                fill="#378ADD"
+                strokeWidth="1.8"
                 className="pointer-events-none"
               />
             </g>

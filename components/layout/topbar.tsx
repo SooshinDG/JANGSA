@@ -27,7 +27,7 @@ export function Topbar() {
   const pageLabel = currentPageLabel(pathname);
 
   return (
-    <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-white/95 px-4 backdrop-blur-sm md:px-6">
+    <header className="sticky top-0 z-20 flex h-12 items-center justify-between border-b border-border bg-card/95 px-4 backdrop-blur-sm md:px-5">
       {/* 왼쪽: 모바일 메뉴 버튼 + 페이지 레이블 */}
       <div className="flex items-center gap-3">
         <button
@@ -38,10 +38,10 @@ export function Topbar() {
           <Menu className="h-4 w-4" />
         </button>
         <div>
-          <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/60 hidden md:block">
-            관리 콘솔
+          <p className="text-[9px] font-medium uppercase tracking-[0.12em] text-muted-foreground/40 hidden md:block">
+            장사 계산기
           </p>
-          <h1 className="text-sm font-semibold text-foreground leading-none mt-0.5">
+          <h1 className="text-sm font-semibold text-foreground leading-none">
             {pageLabel}
           </h1>
         </div>
@@ -60,7 +60,7 @@ export function Topbar() {
               className={cn(
                 "rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors",
                 active
-                  ? "bg-primary/[0.08] text-primary"
+                  ? "bg-primary/[0.07] text-primary"
                   : "text-muted-foreground hover:bg-secondary hover:text-foreground",
               )}
             >

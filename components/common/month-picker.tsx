@@ -34,7 +34,6 @@ export interface MonthPickerProps {
  * 월(YYYY-MM) 선택 공통 컴포넌트.
  * - 이전 / 다음 / 이번 달 이동
  * - 네이티브 `input[type=month]` 로 달력에서 직접 선택 가능
- * - 입력값이 비어 있거나 잘못된 포맷이면 현재 월로 보정해서 onChange 를 통해 부모에게 알림
  */
 export function MonthPicker({
   value,
@@ -46,7 +45,7 @@ export function MonthPicker({
   const isCurrent = safeValue === currentMonthKey();
 
   const buttonBase =
-    "flex h-9 w-9 items-center justify-center rounded-md border border-border bg-white text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40";
+    "flex h-8 w-8 items-center justify-center rounded-md border border-border bg-card text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40";
 
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
@@ -56,19 +55,19 @@ export function MonthPicker({
         </span>
       ) : null}
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <button
           type="button"
           onClick={() => onChange(shiftMonth(safeValue, -1))}
           className={buttonBase}
           aria-label="이전 달"
         >
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft className="h-3.5 w-3.5" />
         </button>
 
-        <label className="flex h-9 cursor-pointer items-center gap-2 rounded-md border border-border bg-white px-3 text-sm text-foreground shadow-sm focus-within:ring-2 focus-within:ring-ring">
-          <CalendarDays className="h-4 w-4 text-muted-foreground" />
-          <span className="min-w-[5.5rem] font-medium tabular-nums">
+        <label className="flex h-8 cursor-pointer items-center gap-2 rounded-md border border-border bg-card px-3 text-sm text-foreground focus-within:ring-2 focus-within:ring-ring/40">
+          <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="min-w-[5rem] text-sm font-medium tabular-nums">
             {formatKoreanMonth(safeValue)}
           </span>
           <input
@@ -91,14 +90,14 @@ export function MonthPicker({
           className={buttonBase}
           aria-label="다음 달"
         >
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="h-3.5 w-3.5" />
         </button>
 
         <button
           type="button"
           onClick={() => onChange(currentMonthKey())}
           disabled={isCurrent}
-          className="h-9 rounded-md border border-border bg-white px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+          className="h-8 rounded-md border border-border bg-card px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
         >
           이번 달
         </button>

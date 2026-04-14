@@ -47,7 +47,7 @@ export function SectionCard({
       ) : null}
       <div className={cn(noPadding ? "" : "px-4 py-3.5")}>{children}</div>
       {footer ? (
-        <footer className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
+        <footer className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
           {footer}
         </footer>
       ) : null}
