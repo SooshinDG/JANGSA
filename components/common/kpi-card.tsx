@@ -7,6 +7,8 @@ export interface KpiCardProps {
   label: string;
   value: ReactNode;
   hint?: ReactNode;
+  /** 카드 하단에 추가로 렌더링할 콘텐츠 (예: 진행 바) */
+  footer?: ReactNode;
   accent?: KpiAccent;
   icon?: ReactNode;
   className?: string;
@@ -28,6 +30,7 @@ export function KpiCard({
   label,
   value,
   hint,
+  footer,
   accent = "default",
   icon,
   className,
@@ -60,6 +63,7 @@ export function KpiCard({
       {hint ? (
         <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
       ) : null}
+      {footer ? <div className="mt-3">{footer}</div> : null}
     </div>
   );
 }
