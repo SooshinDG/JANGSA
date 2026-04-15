@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useMemo, type ReactNode } from "react";
-import { AlertTriangle } from "lucide-react";
 import { SectionCard } from "@/components/common/section-card";
 import { EntriesTableRow } from "./entries-table-row";
 import { useAppState } from "@/hooks/useAppState";
@@ -95,18 +94,6 @@ export function EntriesEditor({ month }: EntriesEditorProps) {
       }
       footer={footerText}
     >
-      {!canWrite ? (
-        <div className="mb-4 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
-          <AlertTriangle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
-          <div>
-            <p className="font-semibold">현재 계정 상태에서는 매출 데이터를 수정할 수 없습니다.</p>
-            <p className="mt-0.5 text-amber-800/80">
-              결제를 진행하시면 다시 입력할 수 있습니다. 기존 데이터는 그대로 보존됩니다.
-            </p>
-          </div>
-        </div>
-      ) : null}
-
       {error ? (
         <div className="mb-4 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">
           {error}

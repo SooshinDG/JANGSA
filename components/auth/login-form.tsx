@@ -44,7 +44,7 @@ export function LoginForm({ pendingSignup }: { pendingSignup?: boolean }) {
           href="/signup"
           className="font-semibold text-primary hover:underline"
         >
-          7일 무료로 시작하기
+          회원가입
         </Link>
       </p>
     </form>

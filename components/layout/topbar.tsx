@@ -11,7 +11,6 @@ const NAV_ITEMS = [
   { href: "/app/settlement", label: "월별 정산" },
   { href: "/app/settings", label: "설정" },
   { href: "/app/backup", label: "백업" },
-  { href: "/app/billing", label: "구독" },
 ] as const;
 
 function currentPageLabel(pathname: string | null): string {

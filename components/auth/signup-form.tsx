@@ -15,11 +15,6 @@ export function SignupForm() {
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
-      <div className="rounded-md border border-primary/30 bg-accent/50 px-3 py-2 text-[11px] leading-relaxed text-accent-foreground">
-        가입 즉시 <strong>7일 무료 체험</strong>이 시작됩니다. 카드 등록은
-        필요하지 않습니다.
-      </div>
-
       <Field
         id="signup-store-name"
         name="store_name"
@@ -57,7 +52,7 @@ export function SignupForm() {
 
       {state.error ? <ErrorBanner message={state.error} /> : null}
 
-      <SubmitButton label="무료 체험 시작하기" pendingLabel="계정 생성 중..." />
+      <SubmitButton label="회원가입" pendingLabel="계정 생성 중..." />
 
       <p className="text-center text-xs text-muted-foreground">
         이미 계정이 있으신가요?{" "}

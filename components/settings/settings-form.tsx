@@ -11,7 +11,7 @@ import {
   RotateCcw,
   Sparkles,
 } from "lucide-react";
-import { ShieldAlert } from "lucide-react";
+
 import { SectionCard } from "@/components/common/section-card";
 import { SettingsNumberField } from "./settings-number-field";
 import { CHANNELS } from "@/lib/constants/channels";
@@ -396,18 +396,6 @@ export function SettingsForm() {
 
   return (
     <>
-      {!canWrite ? (
-        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
-          <ShieldAlert aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
-          <div>
-            <p className="font-semibold">현재 계정 상태에서는 설정을 저장할 수 없습니다.</p>
-            <p className="mt-0.5 text-amber-800/80">
-              결제를 진행하시면 다시 수정할 수 있습니다. 현재 값은 그대로 확인할 수 있습니다.
-            </p>
-          </div>
-        </div>
-      ) : null}
-
       {externalChange ? (
         <ExternalChangeBanner
           dirty={isDirty}

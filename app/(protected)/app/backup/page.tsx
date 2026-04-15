@@ -7,7 +7,7 @@ import {
   Download,
   FileCheck2,
   Loader2,
-  ShieldAlert,
+
   Sparkles,
   Trash2,
   Upload,
@@ -249,18 +249,6 @@ export default function AppBackupPage() {
       {appError ? (
         <div className="rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">
           {appError}
-        </div>
-      ) : null}
-
-      {!canWrite ? (
-        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
-          <ShieldAlert aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
-          <div>
-            <p className="font-semibold">현재 계정 상태에서는 데이터를 수정할 수 없습니다.</p>
-            <p className="mt-0.5 text-amber-800/80">
-              내보내기(export)는 가능하지만, 복원·샘플·초기화는 결제 후 이용할 수 있습니다.
-            </p>
-          </div>
         </div>
       ) : null}
 
